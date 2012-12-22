@@ -14,3 +14,6 @@ src/BattleNET Client/[Bb]in/
 _ReSharper.*
 *.resharper
 Ankh.NoLoad
+*.dll
+*.exe
+src/bnet/bin/Debug/bnet.exe.config

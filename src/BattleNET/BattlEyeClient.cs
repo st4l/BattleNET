@@ -378,6 +378,12 @@ namespace BattleNET
                 StateObject state = (StateObject)ar.AsyncState;
                 Socket client = state.workSocket;
 
+                // this can be called in the middle of a .Disconnect() call when the socket has been disposed
+                // test with Debug > Exceptions > CLR Exceptions on
+                if (!client.Connected)
+                {
+                    return;
+                }
 
                 int bytesRead = client.EndReceive(ar);
 

@@ -36,7 +36,7 @@ namespace BattleNET
 
         public int CommandQueue
         {
-            get 
+            get
             {
                 return _packetLog.Count;
             }
@@ -132,12 +132,11 @@ namespace BattleNET
                 var crc32 = new CRC32();
                 string packet;
                 string header = "BE";
-                string hash = crc32.ComputeHash(Helpers.String2Bytes(Helpers.Hex2Ascii("FF00") + command)).Aggregate<byte, string>(null,
-                                                                                                            (current, b)
-                                                                                                            =>
-                                                                                                            current +
-                                                                                                            b.ToString(
-                                                                                                                "X2"));
+                string hash = crc32.ComputeHash(
+                    Helpers.String2Bytes(
+                    Helpers.Hex2Ascii("FF00") + command))
+                    .Aggregate<byte, string>(null,
+                        (current, b) => current + b.ToString("X2"));
                 hash = Helpers.Hex2Ascii(hash);
                 hash = new string(hash.ToCharArray().Reverse().ToArray());
                 header += hash;
@@ -238,11 +237,7 @@ namespace BattleNET
                         Helpers.String2Bytes(Helpers.Hex2Ascii("FF01") + Helpers.Bytes2String(new byte[] { (byte)_packetNumber }) +
                                                   Helpers.StringValueOf(command))).Aggregate<byte, string>(
                                                       null,
-                                                      (current, b)
-                                                      =>
-                                                      current +
-                                                      b.ToString(
-                                                          "X2"));
+                                                      (current, b) => current + b.ToString("X2"));
                 hash = Helpers.Hex2Ascii(hash);
                 hash = new string(hash.ToCharArray().Reverse().ToArray());
                 header += hash;
@@ -309,14 +304,15 @@ namespace BattleNET
 
         private void Receive()
         {
-            StateObject state = new StateObject();
+            var state = new StateObject();
             state.workSocket = _socket;
 
             _disconnectionType = null;
 
             _socket.BeginReceive(state.buffer, 0, StateObject.BufferSize, 0, new AsyncCallback(ReceiveCallback), state);
 
-            new Thread(delegate() {
+            new Thread(delegate()
+            {
                 while (_socket.Connected && _keepRunning)
                 {
                     TimeSpan timeoutClient = DateTime.Now - _commandSend;
@@ -364,7 +360,7 @@ namespace BattleNET
                     }
                     else if (!_keepRunning)
                     {
-                         //let the thread finish without further action
+                        //let the thread finish without further action
                     }
                     else
                     {
@@ -374,12 +370,20 @@ namespace BattleNET
             }).Start();
         }
 
+
         private void ReceiveCallback(IAsyncResult ar)
         {
             try
             {
                 StateObject state = (StateObject)ar.AsyncState;
                 Socket client = state.workSocket;
+
+                // this can be called in the middle of a .Disconnect() call when the socket has been disposed
+                // test with Debug > Exceptions > CLR Exceptions on
+                if (!client.Connected)
+                {
+                    return;
+                }
 
                 int bytesRead = client.EndReceive(ar);
 

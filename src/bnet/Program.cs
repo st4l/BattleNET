@@ -1,11 +1,16 @@
 ﻿#region
 
 using System;
+using System.Collections.Generic;
+using System.Globalization;
+using System.IO;
 using System.Net;
+using System.Reflection;
 using System.Text;
-using System.Threading;
+using Autofac;
 using BattleNET;
 using Plossum.CommandLine;
+using bnet.IoC;
 
 #endregion
 
@@ -14,18 +19,33 @@ namespace BNet
     internal class Program
     {
 
-        static void Main(string[] args)
+        static void Main()
         {
+            Console.OutputEncoding = Encoding.UTF8;
+            Console.Title = "bnet - " + Environment.MachineName;
             var options = new Args();
             var parser = new CommandLineParser(options);
+            var app = new MainApp(Console.Out);
+
             parser.Parse();
 
             if (options.Help)
             {
                 Console.WriteLine(parser.UsageInfo.ToString(78, false));
+                app.PrintHelp();
                 Environment.Exit(0);
             }
-            else if (parser.HasErrors)
+            
+            if (parser.HasErrors)
+            {
+                Console.WriteLine(parser.UsageInfo.ToString(78, true));
+                app.PrintHelp();
+                Environment.Exit(1);
+            }
+
+            var loginCredentials = GetLoginCredentials(options);
+
+            if (string.IsNullOrEmpty(options.Command) || loginCredentials == null)
             {
                 Console.WriteLine(parser.UsageInfo.ToString(78, true));
                 Environment.Exit(1);
@@ -33,53 +53,10 @@ namespace BNet
 
             // No errors present and all arguments correct 
             // Do work according to arguments   
-            Start(options);
+            app.Start(options, loginCredentials.Value);
 
-        }
-
-        private static void Start(Args args)
-        {
-            BattlEyeLoginCredentials? loginCredentials;
-
-            Console.OutputEncoding = Encoding.UTF8;
-            Console.Title = "BattleNET Client";
-
-            loginCredentials = GetLoginCredentials(args);
-
-            string command = args.Command;
-            if (string.IsNullOrEmpty(command) || loginCredentials == null)
-            {
-                Console.Read();
-                Environment.Exit(1);
-            }
-
-            BattlEyeClient b = new BattlEyeClient(loginCredentials.Value);
-            b.MessageReceivedEvent += DumpMessage;
-            b.DisconnectEvent += Disconnected;
-            b.ReconnectOnPacketLoss(true);
-            b.Connect();
-
-            switch (command)
-            {
-                case "kickall":
-                    for (int i = 0; i <= 100; i++)
-                    {
-                        var cmd = "Kick " + i.ToString();
-                        Console.WriteLine(cmd);
-                        Console.WriteLine(b.SendCommandPacket(cmd).ToString());
-                        while (b.CommandQueue > 0) { /* wait until server received packet */ };
-                    }
-                    break;
-                default:
-                    var result = b.SendCommandPacket(command, false);
-                    while (b.CommandQueue > 0) { /* wait until server received packet */ };
-                    //Console.WriteLine(args.Command);
-                    Console.WriteLine(result.ToString());
-                    //Thread.Sleep(5000);
-                    break;
-            }
-
-            b.Disconnect();
+            Console.WriteLine("Press any key to exit...");
+            Console.ReadKey();
             Environment.Exit(0);
         }
 
@@ -89,26 +66,16 @@ namespace BNet
             IPAddress host;
             if (!IPAddress.TryParse(args.Host, out host))
             {
-                Console.WriteLine("No valid host given!", args.Host);
+                Console.WriteLine("No valid host given! " + args.Host);
                 return null;
             }
 
-            return new BattlEyeLoginCredentials() { 
-                Host = host.ToString(), 
-                Port = args.Port, 
-                Password = args.Password };
-        }
-
-
-        private static void Disconnected(BattlEyeDisconnectEventArgs args)
-        {
-            Console.WriteLine(args.Message);
-        }
-
-
-        private static void DumpMessage(BattlEyeMessageEventArgs args)
-        {
-            Console.WriteLine(args.Message);
+            return new BattlEyeLoginCredentials
+                {
+                    Host = host.ToString(),
+                    Port = args.Port,
+                    Password = args.Password
+                };
         }
     }
 }

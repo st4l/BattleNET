@@ -1,8 +1,11 @@
-﻿#region
+﻿/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+ * BattleNET v1.1 - BattlEye Library and Client            *
+ *                                                         *
+ *  Copyright (C) 2012 by it's authors.                    *
+ *  Some rights reserverd. See COPYING.TXT, AUTHORS.TXT.   *
+ * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 using System.ComponentModel;
-
-#endregion
 
 namespace BattleNET
 {
@@ -81,7 +84,7 @@ namespace BattleNET
         Players,
 
         /// <summary>
-        /// Say [player#] - Say something to player #. specially -1 equals all players on server (e.g. 'Say -1 Hello World').
+        /// Say [player#] [msg] - Say something to player #. specially -1 equals all players on server (e.g. 'Say -1 Hello World').
         /// </summary>
         [Description("Say ")]
         Say,

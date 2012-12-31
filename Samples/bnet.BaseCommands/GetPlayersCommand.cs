@@ -67,25 +67,8 @@ namespace bnet.BaseCommands
             // Players on server:
             // [#] [IP Address]:[Port] [Ping] [GUID] [Name]
             // --------------------------------------------------
-            // 0   108.33.76.177:2304    32   1ef9299ed1e8f2e12422da34c9f975f1(OK) Jhon Denton
-            // 1   82.83.202.243:2304    125  8c2015095e96f5a67c431d4392ebb4f7(OK) Shark2202
-            // 2   174.118.129.215:2304  63   ff3b96e0179e91a1e479cd8ba1ed0c5b(OK) Ghoast
-            // 3   65.33.125.56:2304     15   0fb44b2eb6158fb274843e92a436a813(OK) Owner
-            // 4   217.246.218.88:2304   125  50005937b73cbf70ca4559a03463fef1(OK) Igneous
-            // 5   24.137.37.223:2304    79   b947435c5f5feafc2fbf4d98376d4a4e(OK) Jesse
-            // 6   97.103.173.7:2304     16   211ead0333445f3a6018bd58ce7f5c9c(OK) 7r1gg3r[M4L]
-            // 7   68.202.255.22:2304    16   a6a6e787e0783e75911c53e8925098f7(OK) Mario[M4L]
-            // 9   24.235.157.45:2304    94   d1c0efb8825028703eaf7f876debb564(OK) Ryan
-            // 10  107.196.169.93:2304   110  917722e5d55a3002a128cb9b9f6de945(OK) Chang
-            // 11  177.18.139.78:2304    141  34e9c0e0c8364a403c9a5bebf13d9dba(OK) pitekinhoo
-            // 12  177.158.187.200:2304  78   5e7da66d7555d3608bd8f440f97e40bb(OK) Brother
-            // 13  187.79.143.132:53577  110  882647f87dbe03cefb60354c7d6fe9fa(OK) FelipeS2Lais
-            // 16  200.74.87.210:2309    125  1fda09e974a92b179c699661ea5cc43e(OK) GIULY !
-            // 17  76.23.66.252:2304     47   b3b1c2134be1236749837a9078d82e4b(OK) Super Bambi
-            // 20  72.28.210.64:2304     16   ff96dda4d83ce37151145a4d2cdbceff(OK) Rephase
-            // 21  68.111.66.19:2304     63   c36adcbcd7d8cb8193c8013d02890790(OK) Hipster Police
-            // 23  177.19.73.59:2304     78   cd8b8ee31eeed25b5008317551d6c43f(OK) Allan
-            // 25  99.230.0.128:2304     47   0958e9ef908fcdad2f20a0ec406e1827(OK) NORMA
+            // 0   103.77.52.177:2304    32   1ef92993d1e8f2512422da34c9f975f1(OK) Jhon Denton (Lobby)
+            // 0   103.77.52.177:2304    32   -  Pixie
             // (19 players in total)
             
             Players = new List<PlayerInfo>();

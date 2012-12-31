@@ -12,8 +12,7 @@ using Autofac;
 using BattleNET;
 using Plossum.CommandLine;
 using bnet.IoC;
-using cp.logging;
-using log4net;
+using bnet.IoC.Log4Net;
 using log4net.Config;
 
 #endregion

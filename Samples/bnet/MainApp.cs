@@ -8,7 +8,6 @@ using System.Text;
 using Autofac;
 using BattleNET;
 using bnet.IoC;
-using cp.logging;
 using log4net;
 
 namespace BNet

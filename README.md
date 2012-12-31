@@ -1,3 +1,7 @@
+# bnet #
+bnet is a reference implementation with logging and extensibility in mind: you can add your own commands by implementing IRconCommand.
+Be sure to right click the solution in Visual Studio and select "Enable NuGet package restore" before building it.
+
 # BattleNET #
 
 BattleNET is a C# (.NET) library and client for the BattlEye protocol.

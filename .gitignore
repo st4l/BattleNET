@@ -1,6 +1,9 @@
 [Oo]bj
 BattleNET/[Bb]in/
 BattleNET Client/[Bb]in/
+Samples/bnet/[Bb]in/
+Samples/bnet.IoC/[Bb]in/
+Samples/bnet.BaseCommands/[Bb]in/
 *.vshost.exe*
 *.pdb
 *.user
@@ -15,3 +18,4 @@ _ReSharper.*
 *.resharper
 Ankh.NoLoad
 release.bat
+

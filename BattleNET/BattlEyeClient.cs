@@ -187,11 +187,14 @@ namespace BattleNET
 
                 socket.Send(packet);
                 commandSend = DateTime.Now;
-                cmdCallbacks.Add(packetNumber, new CommandResponseHandlerInfo
-                    {
-                        Expires = DateTime.Now.AddSeconds(timeOutInSecs),
-                        Handler = handler
-                    });
+                if (handler != null)
+                {
+                    cmdCallbacks.Add(packetNumber, new CommandResponseHandlerInfo
+                        {
+                            Expires = DateTime.Now.AddSeconds(timeOutInSecs),
+                            Handler = handler
+                        });
+                }
 
                 if (log)
                 {

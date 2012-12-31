@@ -1,9 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Globalization;
-using System.IO;
-using System.Linq;
-using System.Reflection;
 using System.Text;
 using Autofac;
 using BattleNET;
@@ -26,14 +23,15 @@ namespace BNet
         {
 
             beClient = new BattlEyeClient(loginCredentials);
-            //beClient.MessageReceivedEvent += OutputMessage;
+            //beClient.MessageReceived += OutputMessage;
             beClient.DisconnectEvent += Disconnected;
             beClient.ReconnectOnPacketLoss(true);
             beClient.Connect();
 
             Log.Info("> " + command);
 
-            if (Commands.ContainsKey(command.ToLower(CultureInfo.InvariantCulture)))
+            command = command.ToLower(CultureInfo.InvariantCulture);
+            if (Commands.ContainsKey(command))
             {
                 try
                 {
@@ -81,7 +79,7 @@ namespace BNet
 
             foreach (var command in Commands)
             {
-                sb.AppendFormat(command.Value.Name + " - " + command.Value.Description);
+                sb.AppendFormat("{0} - {1}", command.Value.Name, command.Value.Description);
                 sb.AppendLine();
             }
             return sb.ToString();

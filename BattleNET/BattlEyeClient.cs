@@ -342,24 +342,16 @@ namespace BattleNET
 
         private void ReceiveCallback(IAsyncResult ar)
         {
+            // this method can be called from the middle of a .Disconnect() call
+            // test with Debug > Exception > CLR exs on
+            if (!keepRunning)
+            {
+                return;
+            }
             try
             {
                 StateObject state = (StateObject)ar.AsyncState;
                 Socket client = state.WorkSocket;
-
-                // this method can be called from the middle of a .Disconnect() call
-                // test with Debug > Exception > CLR exs on
-                if (!client.Connected) 
-                {
-                    return;
-                }
-
-                // this method can be called from the middle of a .Disconnect() call
-                // test with Debug > Exception > CLR exs on
-                if (!client.Connected) 
-                {
-                    return;
-                }
 
                 int bytesRead = client.EndReceive(ar);
 
@@ -368,8 +360,10 @@ namespace BattleNET
                     SendAcknowledgePacket(Helpers.Bytes2String(new[] { state.Buffer[8] }));
                     OnBattlEyeMessage(Helpers.Bytes2String(state.Buffer, 9, bytesRead - 9));
                 }
+                    // 01 means it's a command ack or response
                 else if (state.Buffer[7] == 0x01)
                 {
+                    // do we have more than just an ack?
                     if (bytesRead > 9)
                     {
                         if (state.Buffer[7] == 0x01 && state.Buffer[9] == 0x00)
@@ -387,19 +381,23 @@ namespace BattleNET
 
                             if (state.PacketsTodo == 0)
                             {
-                                OnBattlEyeMessage(state.Message.ToString());
+                                OnCommandResponseReceived(state.Message.ToString());
                                 state.Message = new StringBuilder();
                                 state.PacketsTodo = 0;
                             }
                         }
-                        else
+                        else // everything from 9 onwards is the command response
                         {
                             // Temporary fix to avoid infinite loops with multi-packet server messages
                             state.Message = new StringBuilder();
                             state.PacketsTodo = 0;
 
-                            OnBattlEyeMessage(Helpers.Bytes2String(state.Buffer, 9, bytesRead - 9));
+                            OnCommandResponseReceived(Helpers.Bytes2String(state.Buffer, 9, bytesRead - 9));
                         }
+                    }
+                    else // it was just a command ack
+                    {
+                        OnCommandResponseReceived("OK");
                     }
 
                     if (packetLog.ContainsKey(state.Buffer[8]))
@@ -418,6 +416,13 @@ namespace BattleNET
             }
         }
 
+        private void OnCommandResponseReceived(string message)
+        {
+            if (CommandResponseReceived != null)
+            {
+                CommandResponseReceived(this, new BattlEyeMessageEventArgs(message));
+            }
+        }
         private void OnBattlEyeMessage(string message)
         {
             if (MessageEvent != null)
@@ -439,6 +444,7 @@ namespace BattleNET
                 DisconnectEvent(new BattlEyeDisconnectEventArgs(loginDetails, disconnectionType));
         }
 
+        public event CommandResponseReceivedEventHandler CommandResponseReceived;
         public event BattlEyeMessageEventHandler MessageEvent;
         public event BattlEyeConnectEventHandler ConnectEvent;
         public event BattlEyeDisconnectEventHandler DisconnectEvent;

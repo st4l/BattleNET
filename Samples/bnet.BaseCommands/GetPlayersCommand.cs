@@ -27,11 +27,11 @@ namespace bnet.BaseCommands
             this.Players = null;
             this.rawResponse = null;
             this.Players = new List<PlayerInfo>();
-            beClient.MessageReceivedEvent += beClient_MessageReceivedEvent;
-            var result = beClient.SendCommandPacket(EBattlEyeCommand.Players);
-            if (result != EBattlEyeCommandResult.Success )
+            beClient.CommandResponseReceived += BeClientOnCommandResponseReceived;
+            var result = beClient.SendCommandPacket(BattlEyeCommand.Players);
+            if (result != BattlEyeCommandResult.Success )
             {
-                beClient.MessageReceivedEvent -= beClient_MessageReceivedEvent; 
+                beClient.CommandResponseReceived -= BeClientOnCommandResponseReceived;
                 throw new ApplicationException("Could not send command: " + result);
             }
             while (beClient.CommandQueue > 0) 
@@ -43,7 +43,7 @@ namespace bnet.BaseCommands
 
             if (rawResponse == null)
             {
-                beClient.MessageReceivedEvent -= beClient_MessageReceivedEvent;
+                beClient.CommandResponseReceived -= BeClientOnCommandResponseReceived;
                 throw new TimeoutException("ERROR: Timeout while trying to fetch online players.");
             }
 
@@ -54,10 +54,19 @@ namespace bnet.BaseCommands
             catch (Exception e)
             {
                 this.Players = null;
-                beClient.MessageReceivedEvent -= beClient_MessageReceivedEvent;
+                beClient.CommandResponseReceived -= BeClientOnCommandResponseReceived;
                 throw new ApplicationException("ERROR: Could not parse response. " + e);
             }
-            beClient.MessageReceivedEvent -= beClient_MessageReceivedEvent;
+            beClient.CommandResponseReceived -= BeClientOnCommandResponseReceived;
+        }
+
+
+        private void BeClientOnCommandResponseReceived(object source, BattlEyeMessageEventArgs args)
+        {
+            if (args.Message.StartsWith("Players on server:"))
+            {
+                this.rawResponse = args.Message;
+            }
         }
 
 
@@ -130,13 +139,6 @@ namespace bnet.BaseCommands
         }
 
 
-        void beClient_MessageReceivedEvent(BattlEyeMessageEventArgs args)
-        {
-            if (args.Message.StartsWith("Players on server:"))
-            {
-                this.rawResponse = args.Message;
-            }
-        }
 
 
     }

@@ -9,6 +9,7 @@ using System;
 
 namespace BattleNET
 {
+    public delegate void CommandResponseReceivedEventHandler(object source, BattlEyeMessageEventArgs args);
     public delegate void BattlEyeMessageEventHandler(BattlEyeMessageEventArgs args);
 
     public class BattlEyeMessageEventArgs : EventArgs

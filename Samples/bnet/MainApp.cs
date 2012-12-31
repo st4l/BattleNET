@@ -25,7 +25,7 @@ namespace BNet
             beClient = new BattlEyeClient(loginCredentials);
             //beClient.MessageReceived += OutputMessage;
             beClient.DisconnectEvent += Disconnected;
-            beClient.ReconnectOnPacketLoss(true);
+            beClient.ReconnectOnPacketLoss = true;
             beClient.Connect();
 
             Log.Info("> " + command);

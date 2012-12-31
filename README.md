@@ -53,3 +53,8 @@ Changes to BattleNET:
 * Command responses are now received throw event CommandResponseReceived, and they don't trigger MessageReceived
 * Optionally you can supply your own handler for the specific command you're sending with SendCommandPacket, so you don't need to iterate through all the received responses for the one you're expecting. (Recommended)
 
+Example:
+```C#
+     var result = beClient.SendCommandPacket(BattlEyeCommand.Players, 
+                                             handler: (o, args) => this.rawResponse = args.Message);
+

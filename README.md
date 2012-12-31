@@ -2,6 +2,10 @@
 bnet is a reference implementation with logging and extensibility in mind: you can add your own commands by implementing IRconCommand.
 Be sure to right click the solution in Visual Studio and select "Enable NuGet package restore" before building it.
 
+Changes to BattleNET:
+* Command responses are now received throw event CommandResponseReceived, and they don't trigger MessageReceived
+* Optionally you can supply your own handler for the specific command you're sending with SendCommandPacket, so you don't need to iterate through all the received responses for the one you're expecting. (Recommended)
+
 # BattleNET #
 
 BattleNET is a C# (.NET) library and client for the BattlEye protocol.

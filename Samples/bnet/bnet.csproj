@@ -108,9 +108,16 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
+    <None Include="log4net.config">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\..\..\..\cp.logging\cp.logging.csproj">
+      <Project>{c33012dd-0790-4437-848c-fa62ddd20eb3}</Project>
+      <Name>cp.logging</Name>
+    </ProjectReference>
     <ProjectReference Include="..\..\BattleNET\BattleNET.csproj">
       <Project>{4fbb3734-215b-45b1-bdbc-0efa156a6900}</Project>
       <Name>BattleNET</Name>

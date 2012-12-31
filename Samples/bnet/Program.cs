@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
+using System.Linq;
 using System.Net;
 using System.Reflection;
 using System.Text;
@@ -11,6 +12,9 @@ using Autofac;
 using BattleNET;
 using Plossum.CommandLine;
 using bnet.IoC;
+using cp.logging;
+using log4net;
+using log4net.Config;
 
 #endregion
 
@@ -18,42 +22,61 @@ namespace BNet
 {
     internal class Program
     {
+        public static IContainer Container { get; private set; }
 
         static void Main()
         {
+            SetupIoC();
+            
             Console.OutputEncoding = Encoding.UTF8;
             Console.Title = "bnet - " + Environment.MachineName;
+
+            XmlConfigurator.ConfigureAndWatch(new FileInfo("log4net.config"));
             var options = new Args();
             var parser = new CommandLineParser(options);
-            var app = new MainApp(Console.Out);
+            var app = Container.Resolve<MainApp>();
+
+            // Get all registered commands
+            var commands = Container.Resolve<IEnumerable<IRConCommand>>();
+
+            // And index them by name
+            app.Commands = commands.ToDictionary(c => c.Name.ToLower(CultureInfo.InvariantCulture));
+
+
 
             parser.Parse();
 
             if (options.Help)
             {
                 Console.WriteLine(parser.UsageInfo.ToString(78, false));
-                app.PrintHelp();
+                Console.WriteLine(app.GetCommandsHelp());
+                Console.ReadKey();
                 Environment.Exit(0);
             }
             
             if (parser.HasErrors)
             {
                 Console.WriteLine(parser.UsageInfo.ToString(78, true));
-                app.PrintHelp();
+                Console.WriteLine(app.GetCommandsHelp());
+                Console.ReadKey();
                 Environment.Exit(1);
             }
 
             var loginCredentials = GetLoginCredentials(options);
 
-            if (string.IsNullOrEmpty(options.Command) || loginCredentials == null)
+            if (!loginCredentials.HasValue)
             {
+                Console.WriteLine("Invalid connection settings.");
                 Console.WriteLine(parser.UsageInfo.ToString(78, true));
+                Console.WriteLine(app.GetCommandsHelp());
+                Console.ReadKey();
                 Environment.Exit(1);
             }
+            
 
             // No errors present and all arguments correct 
             // Do work according to arguments   
-            app.Start(options, loginCredentials.Value);
+            app.Start(loginCredentials.Value, options.Command);
 
             Console.WriteLine("Press any key to exit...");
             Console.ReadKey();
@@ -76,6 +99,22 @@ namespace BNet
                     Port = args.Port,
                     Password = args.Password
                 };
+        }
+
+
+        private static void SetupIoC()
+        {
+            var builder = new ContainerBuilder();
+            // builder.RegisterInstance(Console.Out).As<TextWriter>().ExternallyOwned();
+            builder.RegisterModule<Log4NetModule>();
+            var baseCommands = Assembly.Load("bnet.BaseCommands");
+            if (baseCommands == null)
+            {
+                throw new FileNotFoundException("File not found.", "bnet.BaseCommands.dll");
+            }
+            builder.RegisterAssemblyModules(baseCommands);
+            builder.RegisterType<MainApp>().AsSelf().PropertiesAutowired();
+            Container = builder.Build();
         }
     }
 }

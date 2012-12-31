@@ -4,29 +4,27 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Text;
 using Autofac;
 using BattleNET;
 using bnet.IoC;
+using cp.logging;
+using log4net;
 
 namespace BNet
 {
     internal class MainApp
     {
         private BattlEyeClient beClient;
-        protected TextWriter TextOut { get; private set; }
         public Dictionary<string, IRConCommand> Commands { get; internal set; }
+        public static IContainer Container { get; private set; }
+        public ILog Log { get; set; }
 
 
-        public MainApp(TextWriter @out)
+
+
+        public void Start(BattlEyeLoginCredentials loginCredentials, string command)
         {
-            TextOut = @out;
-            SetupIoC();
-        }
-
-
-        public void Start(Args args, BattlEyeLoginCredentials loginCredentials)
-        {
-            var command = args.Command;
 
             beClient = new BattlEyeClient(loginCredentials);
             //beClient.MessageReceivedEvent += OutputMessage;
@@ -34,8 +32,7 @@ namespace BNet
             beClient.ReconnectOnPacketLoss(true);
             beClient.Connect();
 
-            TextOut.WriteLine();
-            TextOut.WriteLine("> " + command);
+            Log.Info("> " + command);
 
             if (Commands.ContainsKey(command.ToLower(CultureInfo.InvariantCulture)))
             {
@@ -45,17 +42,17 @@ namespace BNet
                 }
                 catch (TimeoutException timeoutException)
                 {
-                    TextOut.WriteLine(timeoutException.Message);
+                    Log.Error(timeoutException.Message, timeoutException);
                 }
                 catch (ApplicationException applicationException)
                 {
-                    TextOut.WriteLine(applicationException.Message);
+                    Log.Error(applicationException.Message, applicationException);
                 }
             }
             else
             {
                 var result = beClient.SendCommandPacket(command, false);
-                TextOut.WriteLine(result.ToString());
+                Log.Info(result.ToString());
             }
 
             while (beClient.CommandQueue > 0)
@@ -63,56 +60,32 @@ namespace BNet
                 /* wait until server received all packets */
             }
             beClient.Disconnect();
-            TextOut.WriteLine();
         }
 
 
         private void Disconnected(BattlEyeDisconnectEventArgs args)
         {
-            TextOut.WriteLine();
-            TextOut.WriteLine(args.Message);
+            Log.Info(args.Message);
         }
 
 
         private void OutputMessage(BattlEyeMessageEventArgs args)
         {
-            TextOut.WriteLine(args.Message);
+            Log.Info(args.Message);
         }
 
 
-        private void SetupIoC()
+        public string GetCommandsHelp()
         {
-            var builder = new ContainerBuilder();
-            builder.RegisterInstance(Console.Out)
-                   .As<TextWriter>().ExternallyOwned();
-
-            var baseCommands = Assembly.Load("bnet.BaseCommands");
-            if (baseCommands == null)
-            {
-                throw new FileNotFoundException("File not found.", "bnet.BaseCommands.dll");
-            }
-            builder.RegisterAssemblyModules(baseCommands);
-
-            var container = builder.Build();
-
-            // Get all registered commands
-            var commands = container.Resolve<IEnumerable<IRConCommand>>();
-
-            // And index them by name
-            this.Commands = commands.ToDictionary(
-                command => command.Name.ToLower(CultureInfo.InvariantCulture));
-        }
-
-
-        public void PrintHelp()
-        {
-            TextOut.WriteLine("Available extra commands:");
+            var sb = new StringBuilder();
+            sb.AppendLine("Available extra commands:");
 
             foreach (var command in Commands)
             {
-                TextOut.WriteLine(command.Value.Name + " - " + command.Value.Description);
+                sb.AppendFormat(command.Value.Name + " - " + command.Value.Description);
+                sb.AppendLine();
             }
-
+            return sb.ToString();
         }
     }
 }

@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.Threading;
 using BattleNET;
 using bnet.IoC;
 
@@ -31,14 +32,14 @@ namespace bnet.BaseCommands
             if (result != EBattlEyeCommandResult.Success )
             {
                 beClient.MessageReceivedEvent -= beClient_MessageReceivedEvent; 
-                throw new ApplicationException("Could not send command. Return value: " + result);
+                throw new ApplicationException("Could not send command: " + result);
             }
             while (beClient.CommandQueue > 0) 
-            { /* wait until server received all packets */ }
+            { /* wait until server acknowledged all commands */ }
             
             var timeout = DateTime.Now.AddSeconds(10);
             while(DateTime.Now < timeout && rawResponse == null) 
-            { /* wait for a response, or timeout */}
+            { Thread.Sleep(500); }
 
             if (rawResponse == null)
             {

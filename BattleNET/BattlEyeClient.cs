@@ -2,7 +2,7 @@
  * BattleNET v1.2 - BattlEye Library and Client            *
  *                                                         *
  *  Copyright (C) 2012 by it's authors.                    *
- *  Some rights reserverd. See COPYING.TXT, AUTHORS.TXT.   *
+ *  Some rights reserved. See COPYING.TXT, AUTHORS.TXT.    *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 using System;
@@ -24,6 +24,12 @@ namespace BattleNET
         public int PacketsTodo = 0;
     }
 
+    class CommandResponseHandlerInfo
+    {
+        public CommandResponseReceivedEventHandler Handler { get; set; }
+        public DateTime Expires { get; set; }
+    }
+
     public class BattlEyeClient
     {
         private Socket socket;
@@ -31,8 +37,9 @@ namespace BattleNET
         private DateTime responseReceived;
         private BattlEyeDisconnectionType? disconnectionType;
         private bool keepRunning;
-        private int packetNumber;
+        private byte packetNumber;
         private SortedDictionary<int, string> packetLog;
+        private Dictionary<int, CommandResponseHandlerInfo> cmdCallbacks;
         private BattlEyeLoginCredentials loginCredentials;
 
         public bool Connected
@@ -69,6 +76,7 @@ namespace BattleNET
 
             packetNumber = 0;
             packetLog = new SortedDictionary<int, string>();
+            cmdCallbacks = new Dictionary<int, CommandResponseHandlerInfo>();
 
             keepRunning = true;
             IPAddress ipAddress = IPAddress.Parse(loginCredentials.Host);
@@ -163,7 +171,12 @@ namespace BattleNET
             return BattlEyeCommandResult.Success;
         }
 
-        public BattlEyeCommandResult SendCommandPacket(string command, bool log = true)
+        public BattlEyeCommandResult SendCommandPacket(BattlEyeCommand command, string parameters = "", CommandResponseReceivedEventHandler handler = null, int timeOutInSecs = 10)
+        {
+            return SendCommandPacket(Helpers.StringValueOf(command) + " " + parameters, true, handler, timeOutInSecs);
+        }
+
+        public BattlEyeCommandResult SendCommandPacket(string command, bool log = true, CommandResponseReceivedEventHandler handler = null, int timeOutInSecs = 10)
         {
             try
             {
@@ -174,12 +187,17 @@ namespace BattleNET
 
                 socket.Send(packet);
                 commandSend = DateTime.Now;
+                cmdCallbacks.Add(packetNumber, new CommandResponseHandlerInfo
+                    {
+                        Expires = DateTime.Now.AddSeconds(timeOutInSecs),
+                        Handler = handler
+                    });
 
                 if (log)
                 {
                     packetLog.Add(packetNumber, command);
-                    packetNumber++;
                 }
+                packetNumber = (packetNumber == 255) ? (byte)0 : (byte)(packetNumber + 1);
             }
             catch
             {
@@ -189,31 +207,7 @@ namespace BattleNET
             return BattlEyeCommandResult.Success;
         }
 
-        public BattlEyeCommandResult SendCommandPacket(BattlEyeCommand command, string parameters = "")
-        {
-            try
-            {
-                if (!socket.Connected)
-                    return BattlEyeCommandResult.NotConnected;
-
-                byte[] packet = ConstructPacket(1, packetNumber, Helpers.StringValueOf(command) + parameters);
-
-                socket.Send(packet);
-
-                commandSend = DateTime.Now;
-
-                packetLog.Add(packetNumber, Helpers.StringValueOf(command) + parameters);
-                packetNumber++;
-            }
-            catch
-            {
-                return BattlEyeCommandResult.Error;
-            }
-
-            return BattlEyeCommandResult.Success;
-        }
-
-        private byte[] ConstructPacket(int packetType, int sequenceNumber, string command)
+        private byte[] ConstructPacket(int packetType, byte sequenceNumber, string command)
         {
             string type;
 
@@ -232,7 +226,7 @@ namespace BattleNET
                     return new byte[] { };
             }
 
-            string count = Helpers.Bytes2String(new byte[] { (byte)sequenceNumber });
+            string count = Helpers.Bytes2String(new[] { sequenceNumber });
 
             byte[] byteArray = new CRC32().ComputeHash(Helpers.String2Bytes(type + ((packetType != 1) ? "" : count) + command));
 
@@ -242,6 +236,7 @@ namespace BattleNET
 
             return Helpers.String2Bytes(packet);
         }
+
 
         public void Disconnect()
         {
@@ -320,6 +315,7 @@ namespace BattleNET
                     }
 
                     Thread.Sleep(500);
+                    RemoveExpiredCmdCallbacks();
                 }
 
                 if (!socket.Connected)
@@ -339,6 +335,23 @@ namespace BattleNET
                 }
             }).Start();
         }
+
+
+        private void RemoveExpiredCmdCallbacks()
+        {
+            lock (cmdCallbacks)
+            {
+                var expiredCallbacks = from kv in cmdCallbacks
+                                   where DateTime.Now > kv.Value.Expires
+                                   select kv.Key;
+                    
+                foreach (var callbackId in expiredCallbacks)
+                {
+                    cmdCallbacks.Remove(callbackId);
+                }
+            }
+        }
+
 
         private void ReceiveCallback(IAsyncResult ar)
         {
@@ -363,6 +376,7 @@ namespace BattleNET
                     // 01 means it's a command ack or response
                 else if (state.Buffer[7] == 0x01)
                 {
+                    var cmdSeqId = (int)state.Buffer[8];
                     // do we have more than just an ack?
                     if (bytesRead > 9)
                     {
@@ -381,23 +395,22 @@ namespace BattleNET
 
                             if (state.PacketsTodo == 0)
                             {
-                                OnCommandResponseReceived(state.Message.ToString());
+                                OnCommandResponseReceived(cmdSeqId, state.Message.ToString());
                                 state.Message = new StringBuilder();
                                 state.PacketsTodo = 0;
                             }
                         }
                         else // everything from 9 onwards is the command response
                         {
-                            // Temporary fix to avoid infinite loops with multi-packet server messages
                             state.Message = new StringBuilder();
                             state.PacketsTodo = 0;
 
-                            OnCommandResponseReceived(Helpers.Bytes2String(state.Buffer, 9, bytesRead - 9));
+                            OnCommandResponseReceived(cmdSeqId, Helpers.Bytes2String(state.Buffer, 9, bytesRead - 9));
                         }
                     }
                     else // it was just a command ack
                     {
-                        OnCommandResponseReceived("OK");
+                        OnCommandResponseReceived(cmdSeqId, "OK");
                     }
 
                     if (packetLog.ContainsKey(state.Buffer[8]))
@@ -416,13 +429,25 @@ namespace BattleNET
             }
         }
 
-        private void OnCommandResponseReceived(string message)
+        private void OnCommandResponseReceived(int cmdId, string message)
         {
+            
+            if (this.cmdCallbacks.ContainsKey(cmdId))
+            {
+                lock (cmdCallbacks)
+                {
+                    var handler = cmdCallbacks[cmdId].Handler;
+                    cmdCallbacks.Remove(cmdId);
+                    handler(this, new BattlEyeCommandResponseEventArgs(message));
+                }
+            }
+
             if (CommandResponseReceived != null)
             {
-                CommandResponseReceived(this, new BattlEyeMessageEventArgs(message));
+                CommandResponseReceived(this, new BattlEyeCommandResponseEventArgs(message));
             }
         }
+
         private void OnBattlEyeMessage(string message)
         {
             if (MessageEvent != null)

@@ -71,7 +71,11 @@ namespace BNet
                 Console.ReadKey();
                 Environment.Exit(1);
             }
-            
+
+#if DEBUG
+            Console.WriteLine("Press Enter to begin...");
+            Console.ReadLine();
+#endif
 
             // No errors present and all arguments correct 
             // Do work according to arguments   

@@ -27,11 +27,10 @@ namespace bnet.BaseCommands
             this.Players = null;
             this.rawResponse = null;
             this.Players = new List<PlayerInfo>();
-            beClient.CommandResponseReceived += BeClientOnCommandResponseReceived;
-            var result = beClient.SendCommandPacket(BattlEyeCommand.Players);
+            
+            var result = beClient.SendCommandPacket(BattlEyeCommand.Players, "", CmdResponseHandler);
             if (result != BattlEyeCommandResult.Success )
             {
-                beClient.CommandResponseReceived -= BeClientOnCommandResponseReceived;
                 throw new ApplicationException("Could not send command: " + result);
             }
             while (beClient.CommandQueue > 0) 
@@ -43,7 +42,6 @@ namespace bnet.BaseCommands
 
             if (rawResponse == null)
             {
-                beClient.CommandResponseReceived -= BeClientOnCommandResponseReceived;
                 throw new TimeoutException("ERROR: Timeout while trying to fetch online players.");
             }
 
@@ -54,20 +52,19 @@ namespace bnet.BaseCommands
             catch (Exception e)
             {
                 this.Players = null;
-                beClient.CommandResponseReceived -= BeClientOnCommandResponseReceived;
                 throw new ApplicationException("ERROR: Could not parse response. " + e);
             }
-            beClient.CommandResponseReceived -= BeClientOnCommandResponseReceived;
         }
 
 
-        private void BeClientOnCommandResponseReceived(object source, BattlEyeMessageEventArgs args)
+        private void CmdResponseHandler(object source, BattlEyeCommandResponseEventArgs args)
         {
             if (args.Message.StartsWith("Players on server:"))
             {
                 this.rawResponse = args.Message;
             }
         }
+
 
 
         private void ParseResponse()

@@ -91,10 +91,7 @@ namespace BNet
                     Console.ReadKey(true);
                 }
             }
-            else
-            {
-                app.ExecuteCommand(options.Command);
-            }
+            app.ExecuteCommand(options.Command);
             Environment.Exit(0);
         }
 

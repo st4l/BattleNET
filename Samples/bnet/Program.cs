@@ -33,7 +33,8 @@ namespace BNet
             XmlConfigurator.ConfigureAndWatch(new FileInfo("log4net.config"));
             var options = new Args();
             var parser = new CommandLineParser(options);
-            var app = Container.Resolve<MainApp>();
+            var app = Container.Resolve<CommandExecutor>();
+
 
             // Get all registered commands
             var commands = Container.Resolve<IEnumerable<IRConCommand>>();
@@ -73,16 +74,27 @@ namespace BNet
             }
 
 #if DEBUG
+            // Give me a chance to attach the debugger... (launching from .bat)
             Console.WriteLine("Press Enter to begin...");
             Console.ReadLine();
 #endif
 
             // No errors present and all arguments correct 
             // Do work according to arguments   
-            app.Start(loginCredentials.Value, options.Command);
+            app.LoginCredentials = loginCredentials.Value;
 
-            Console.WriteLine("Press any key to exit...");
-            Console.ReadKey();
+            if (options.AsService > 0)
+            {
+                app.StartService(new[] { options.Command }, options.AsService);
+                while (true)
+                {
+                    Console.ReadKey(true);
+                }
+            }
+            else
+            {
+                app.ExecuteCommand(options.Command);
+            }
             Environment.Exit(0);
         }
 
@@ -116,7 +128,7 @@ namespace BNet
                 throw new FileNotFoundException("File not found.", "bnet.BaseCommands.dll");
             }
             builder.RegisterAssemblyModules(baseCommands);
-            builder.RegisterType<MainApp>().AsSelf().PropertiesAutowired();
+            builder.RegisterType<CommandExecutor>().AsSelf().PropertiesAutowired();
             Container = builder.Build();
         }
     }

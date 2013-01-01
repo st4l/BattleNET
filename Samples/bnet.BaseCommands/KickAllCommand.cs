@@ -9,7 +9,10 @@ namespace bnet.BaseCommands
         public KickAllCommand()
         {
             KickReason = "SERVER IS RESTARTING";
-        }        
+        }
+
+
+        public override string RConCommandText { get { return "Kick "; } }
         public override string Name { get { return "kickall"; } }
         public override string Description
         {

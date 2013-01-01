@@ -25,6 +25,9 @@ namespace BNet
             Description = "Command to send")]
         public string Command { get; set; }
 
+        [CommandLineOption(Name = "service", Aliases = "svc", MinOccurs = 0, MaxOccurs = 1,
+            Description = "Run as a service (do not exit), execute command every n seconds")]
+        public int AsService { get; set; }
 	
         [CommandLineOption(Name="v", Aliases="verbose", Description="Produce verbose output")]
         public bool Verbose { get; set; }

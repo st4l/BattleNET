@@ -5,6 +5,8 @@
  *  Some rights reserved. See COPYING.TXT, AUTHORS.TXT.    *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
+// http://www.battleye.com/downloads/BERConProtocol.txt
+
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -64,8 +66,12 @@ namespace BattleNET
             }
         }
 
+        public bool DiscardConsoleMessages { get; set; }
+
+        
         public BattlEyeClient(BattlEyeLoginCredentials loginCredentials)
         {
+            this.DiscardConsoleMessages = false;
             this.loginCredentials = loginCredentials;
         }
 
@@ -364,6 +370,7 @@ namespace BattleNET
             {
                 return;
             }
+
             try
             {
                 StateObject state = (StateObject)ar.AsyncState;
@@ -371,7 +378,7 @@ namespace BattleNET
 
                 int bytesRead = client.EndReceive(ar);
 
-                if (state.Buffer[7] == 0x02)
+                if (state.Buffer[7] == 0x02 && !DiscardConsoleMessages)
                 {
                     SendAcknowledgePacket(Helpers.Bytes2String(new[] { state.Buffer[8] }));
                     OnBattlEyeMessage(Helpers.Bytes2String(state.Buffer, 9, bytesRead - 9));
@@ -383,6 +390,7 @@ namespace BattleNET
                     // do we have more than just an ack?
                     if (bytesRead > 9)
                     {
+                        // is it part of a multi-packet response?
                         if (state.Buffer[7] == 0x01 && state.Buffer[9] == 0x00)
                         {
                             if (state.Buffer[11] == 0)
@@ -403,7 +411,7 @@ namespace BattleNET
                                 state.PacketsTodo = 0;
                             }
                         }
-                        else // everything from 9 onwards is the command response
+                        else // single packet response: everything from 9 onwards is the command response
                         {
                             state.Message = new StringBuilder();
                             state.PacketsTodo = 0;
@@ -431,6 +439,9 @@ namespace BattleNET
                 // do nothing
             }
         }
+
+
+
 
         private void OnCommandResponseReceived(int cmdId, string message)
         {

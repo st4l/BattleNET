@@ -9,5 +9,9 @@ namespace bnet.IoC
         void Execute(BattlEyeClient beClient);
         ILog Log { get; }
         string Description { get; }
+        string RConCommandText { get; }
+        bool ExecuteSingle(BattlEyeLoginCredentials credentials);
     }
+
+
 }

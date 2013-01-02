@@ -1,14 +1,18 @@
-﻿using System;
-using log4net;
-
-namespace bnet.IoC.Log4Net
+﻿namespace bnet.IoC.Log4Net
 {
+    using System;
+    using log4net;
+
+
     public class Log4NetModule : LogModule<ILog>
     {
+        #region Methods
+
         protected override ILog CreateLoggerFor(Type type)
         {
             return LogManager.GetLogger(type);
         }
-    }
 
+        #endregion
+    }
 }

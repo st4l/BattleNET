@@ -1,26 +1,13 @@
-﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
-using bnet.BaseCommands;
-
-namespace bnet.Tests
+﻿namespace bnet.Tests
 {
+    using bnet.BaseCommands;
+    using Microsoft.VisualStudio.TestTools.UnitTesting;
+
+
     [TestClass]
     public class GetPlayersCommandTests
     {
-
-        [TestMethod]
-        public void TestParseResponse()
-        {
-            var cmd = new GetPlayersCommand();
-            cmd.Log = DebugLogger.GetLogger(typeof (GetPlayersCommand));
-
-
-            var accessor = new PrivateObject(cmd);
-            accessor.SetField("RawResponse", TestResponse1);
-            accessor.Invoke("ParseResponse"); 
-
-            Assert.IsNotNull(cmd.Result);
-        }
-
+        #region Constants
 
         private const string TestResponse1 = @"Players on server:
 [#] [IP Address]:[Port] [Ping] [GUID] [Name]
@@ -51,5 +38,21 @@ namespace bnet.Tests
 28  99.170.241.99:2304    125  504ba4fe8eb1436769172c0076056a8b(OK) onewhofarted
 31  24.176.86.145:2304    47   8180570fbe886dafa60a80b4a7ec81ed(OK) Rick Grimes
 (25 players in total)";
+
+        #endregion
+
+
+        [TestMethod]
+        public void TestParseResponse()
+        {
+            var cmd = new GetPlayersCommand();
+            cmd.Log = DebugLogger.GetLogger(typeof(GetPlayersCommand));
+
+            var accessor = new PrivateObject(cmd);
+            accessor.SetField("RawResponse", TestResponse1);
+            accessor.Invoke("ParseResponse");
+
+            Assert.IsNotNull(cmd.Result);
+        }
     }
 }

@@ -1,15 +1,21 @@
-﻿using BattleNET;
-using log4net;
-
-namespace bnet.IoC
+﻿namespace bnet.IoC
 {
+    using BattleNET;
+    using log4net;
+
+
     public interface IRConCommand
     {
-        string Name { get; }
-        ILog Log { get; }
         string Description { get; }
+
+        ILog Log { get; }
+
+        string Name { get; }
+
         string RConCommandText { get; }
+
         void Execute(BattlEyeClient beClient, int timeoutSecs = 10);
+
         bool ExecuteSingle(BattlEyeLoginCredentials credentials);
     }
 }

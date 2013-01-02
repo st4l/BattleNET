@@ -1,6 +1,7 @@
 ﻿using System.Data.Entity;
 
-namespace EntityFramework.Hooking
+
+namespace bnet.AdvCommands.misc
 {
     public static class Extensions
     {

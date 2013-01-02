@@ -4,13 +4,12 @@ using System.Data.Common;
 using System.Data.Entity;
 using System.Data.EntityClient;
 using System.Data.Objects;
-using System.Data.SqlClient;
 using System.Globalization;
 using System.Linq;
 using System.Reflection;
 using System.Text;
 
-namespace EntityFramework.Hooking
+namespace bnet.AdvCommands.misc
 {
     public class EntityFrameworkHook
     {

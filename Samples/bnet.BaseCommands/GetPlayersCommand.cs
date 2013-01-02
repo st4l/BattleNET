@@ -1,8 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Globalization;
-using System.Threading;
-using BattleNET;
 using bnet.IoC;
 
 namespace bnet.BaseCommands
@@ -13,6 +11,7 @@ namespace bnet.BaseCommands
         {
             get { return "players"; }
         }
+
 
         public override string Name
         {
@@ -28,26 +27,25 @@ namespace bnet.BaseCommands
 
         protected override void ParseResponse()
         {
-
             // Players on server:
             // [#] [IP Address]:[Port] [Ping] [GUID] [Name]
             // --------------------------------------------------
             // 0   103.77.52.177:2304    32   1ef92993d1e8f2512422da34c9f975f1(OK) Jhon Denton (Lobby)
             // 0   103.77.52.177:2304    32   -  Pixie
             // (19 players in total)
-            
+
             Result = new List<PlayerInfo>();
-            var lines = RawResponse.Split(new[] {(char)0x0A}, StringSplitOptions.RemoveEmptyEntries);
+            string[] lines = RawResponse.Split(new[] {(char)0x0A}, StringSplitOptions.RemoveEmptyEntries);
             for (int i = 3; i <= lines.Length - 2; i++)
             {
-                var tokens = lines[i].Split(new char[0], StringSplitOptions.RemoveEmptyEntries);
+                string[] tokens = lines[i].Split(new char[0], StringSplitOptions.RemoveEmptyEntries);
 
                 bool lobby;
-                var name = ParseName(tokens, out lobby);
+                string name = ParseName(tokens, out lobby);
                 // split Guid token
-                var guidtokens = tokens[3] == "-" ? new[] {"", ""} : tokens[3].Split('(');
+                string[] guidtokens = tokens[3] == "-" ? new[] {"", ""} : tokens[3].Split('(');
 
-                Result.Add( new PlayerInfo
+                Result.Add(new PlayerInfo
                     {
                         Id = int.Parse(tokens[0], CultureInfo.InvariantCulture),
                         IpAddress = tokens[1],
@@ -66,13 +64,13 @@ namespace bnet.BaseCommands
         {
             Log.Info("Players received: ");
             Log.InfoFormat("{0,2}  {1,-30}  {2,32} {3,1} {4,5} {5,22} {6}",
-                              "Id", "Name", "Guid", "V", "Ping", "Ip address",
-                              "In Lobby");
-            foreach (var p in Result)
+                           "Id", "Name", "Guid", "V", "Ping", "Ip address",
+                           "In Lobby");
+            foreach (PlayerInfo p in Result)
             {
                 Log.InfoFormat("{0:00}  {1,-30}  {2,32} {3,1} {4,5} {5,22} {6}",
-                                  p.Id, p.Name, p.Guid, p.Verified.ToString()[0], p.Ping, p.IpAddress,
-                                  p.InLobby ? "(in lobby)" : string.Empty);
+                               p.Id, p.Name, p.Guid, p.Verified.ToString()[0], p.Ping, p.IpAddress,
+                               p.InLobby ? "(in lobby)" : string.Empty);
             }
             Log.InfoFormat("{0} players", Result.Count);
         }
@@ -93,9 +91,5 @@ namespace bnet.BaseCommands
             }
             return name;
         }
-
-
-
-
     }
 }

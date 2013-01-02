@@ -6,12 +6,10 @@ namespace bnet.IoC
     public interface IRConCommand
     {
         string Name { get; }
-        void Execute(BattlEyeClient beClient);
         ILog Log { get; }
         string Description { get; }
         string RConCommandText { get; }
+        void Execute(BattlEyeClient beClient, int timeoutSecs = 10);
         bool ExecuteSingle(BattlEyeLoginCredentials credentials);
     }
-
-
 }

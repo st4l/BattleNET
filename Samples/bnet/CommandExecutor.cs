@@ -12,19 +12,19 @@ namespace BNet
 {
     internal class CommandExecutor
     {
+        private List<Timer> runningTimers;
         public Dictionary<string, IRConCommand> Commands { get; internal set; }
         public ILog Log { get; set; }
         public BattlEyeLoginCredentials LoginCredentials { get; set; }
-        private List<Timer> runningTimers;
 
 
         public void StartService(string[] commands, int period)
         {
-            this.runningTimers = new List<Timer>();
+            runningTimers = new List<Timer>();
 
             int start = 1000;
             period *= 1000;
-            foreach (var command in commands)
+            foreach (string command in commands)
             {
                 var timer = new Timer(ExecuteTimedCommand, command, start, period);
                 start += 1000;
@@ -44,24 +44,25 @@ namespace BNet
             command = command.ToLower(CultureInfo.InvariantCulture);
             if (Commands.ContainsKey(command))
             {
-                var rConInstance = Commands[command];
+                IRConCommand rConInstance = Commands[command];
 
                 //TODO: ugly, ugly... 
-                var hasResults = rConInstance.GetType().GetInterfaces()
-                                             .Any(x =>
-                                                  x.IsGenericType &&
-                                                  x.GetGenericTypeDefinition() ==
-                                                  typeof (IRConCommand<>));
+                bool hasResults = rConInstance.GetType()
+                                              .GetInterfaces()
+                                              .Any(x =>
+                                                   x.IsGenericType &&
+                                                   x.GetGenericTypeDefinition() ==
+                                                   typeof (IRConCommand<>));
                 try
                 {
                     if (hasResults)
                     {
-                        // use covariance to get the virtual table
-                        ((IRConCommand<object>)rConInstance).ExecSingleAwaitResponse(this.LoginCredentials);
+                        // use covariance to get the generic version's virtual table
+                        ((IRConCommand<object>)rConInstance).ExecSingleAwaitResponse(LoginCredentials);
                     }
                     else
                     {
-                        rConInstance.ExecuteSingle(this.LoginCredentials);
+                        rConInstance.ExecuteSingle(LoginCredentials);
                     }
                 }
                 catch (TimeoutException timeoutException)

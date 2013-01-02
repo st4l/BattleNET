@@ -18,7 +18,7 @@ namespace bnet.IoC
                     DiscardConsoleMessages = true
                 };
 
-            var connect = beClient.Connect();
+            BattlEyeConnectionResult connect = beClient.Connect();
             if (connect != BattlEyeConnectionResult.Success)
             {
                 beClient.Disconnect();
@@ -51,16 +51,15 @@ namespace bnet.IoC
 
             try
             {
-                ParseResponse();
+                Result = ParseResponse(RawResponse);
             }
             catch (Exception e)
             {
-                Result = null;
                 throw new ApplicationException("ERROR: Could not parse response: \r\n" + RawResponse, e);
             }
         }
 
 
-        protected abstract void ParseResponse();
+        protected abstract TResultType ParseResponse(string rawResponse);
     }
 }

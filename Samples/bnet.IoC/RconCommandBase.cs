@@ -6,12 +6,11 @@ namespace bnet.IoC
 {
     public abstract class RConCommandBase : IRConCommand
     {
-        protected string RawResponse;
         public abstract string RConCommandText { get; }
         public abstract string Name { get; }
-
-        public ILog Log { get; set; }
         public abstract string Description { get; }
+        public ILog Log { get; set; }
+        protected string RawResponse;
 
 
         public virtual bool ExecuteSingle(BattlEyeLoginCredentials credentials)
@@ -41,9 +40,10 @@ namespace bnet.IoC
         {
             RawResponse = null;
 
-            BattlEyeCommandResult result = beClient.SendCommandPacket(RConCommandText,
-                                                                      handler: (o, args) => RawResponse = args.Message,
-                                                                      timeOutInSecs: timeoutSecs);
+            BattlEyeCommandResult result = beClient
+                .SendCommandPacket(RConCommandText,
+                                   handler: (o, args) => RawResponse = args.Message,
+                                   timeOutInSecs: timeoutSecs);
 
             if (result != BattlEyeCommandResult.Success)
             {

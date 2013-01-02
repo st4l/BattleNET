@@ -324,7 +324,7 @@ namespace BattleNET
                     }
 
                     Thread.Sleep(500);
-                    RemoveExpiredCmdCallbacks();
+                    RemoveCmdCallbacks(null);
                 }
 
                 if (!socket.Connected)
@@ -346,21 +346,17 @@ namespace BattleNET
         }
 
 
-        private void RemoveExpiredCmdCallbacks()
-        {
-            var expiredCallbacks = from kv in cmdCallbacks
-                                where DateTime.Now > kv.Value.Expires
-                                select kv.Key;
-
-            RemoveCmdCallbacks(expiredCallbacks);
-                    
-        }
-
-
-        private void RemoveCmdCallbacks(IEnumerable<int> callbackIds)
+        private void RemoveCmdCallbacks(IEnumerable<int> callbackIds = null)
         {
             lock (cmdCallbacks)
             {
+                if (callbackIds == null)
+                {
+                    callbackIds = from kv in cmdCallbacks
+                                  where DateTime.Now > kv.Value.Expires
+                                  select kv.Key;
+                }
+
                 foreach (var callbackId in callbackIds)
                 {
                     cmdCallbacks.Remove(callbackId);

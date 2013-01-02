@@ -348,13 +348,20 @@ namespace BattleNET
 
         private void RemoveExpiredCmdCallbacks()
         {
+            var expiredCallbacks = from kv in cmdCallbacks
+                                where DateTime.Now > kv.Value.Expires
+                                select kv.Key;
+
+            RemoveCmdCallbacks(expiredCallbacks);
+                    
+        }
+
+
+        private void RemoveCmdCallbacks(IEnumerable<int> callbackIds)
+        {
             lock (cmdCallbacks)
             {
-                var expiredCallbacks = from kv in cmdCallbacks
-                                   where DateTime.Now > kv.Value.Expires
-                                   select kv.Key;
-                    
-                foreach (var callbackId in expiredCallbacks)
+                foreach (var callbackId in callbackIds)
                 {
                     cmdCallbacks.Remove(callbackId);
                 }
@@ -448,12 +455,9 @@ namespace BattleNET
             
             if (this.cmdCallbacks.ContainsKey(cmdId))
             {
-                lock (cmdCallbacks)
-                {
-                    var handler = cmdCallbacks[cmdId].Handler;
-                    cmdCallbacks.Remove(cmdId);
-                    handler(this, new BattlEyeCommandResponseEventArgs(message));
-                }
+                var handler = cmdCallbacks[cmdId].Handler;
+                RemoveCmdCallbacks(new[] {cmdId});
+                handler(this, new BattlEyeCommandResponseEventArgs(message));
             }
 
             if (CommandResponseReceived != null)

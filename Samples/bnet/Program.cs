@@ -116,6 +116,7 @@ namespace BNet
                 Exit(executor, parser, 1);
             }
 
+            // batch file or command-line?
             if (options.BatchFile != null)
             {
                 if (!ParseBatchFile(options.BatchFile, executor))
@@ -123,9 +124,9 @@ namespace BNet
                     Exit(executor, parser, 1);
                 }
             }
-            else if (options.Servers != null && options.Servers.Count > 0)
+            else
             {
-                executor.Servers = ParseServerUris(options.Servers, null);
+                executor.Servers = ParseServerUris(options.Servers);
                 if (executor.Servers == null || !executor.Servers.Any())
                 {
                     Console.WriteLine("No servers specified.");
@@ -133,16 +134,11 @@ namespace BNet
                 }
 
                 executor.Commands = options.Commands;
-                if (executor.Commands == null || !executor.Commands.Any())
+                if (executor.Commands == null || options.Commands.Count == 0)
                 {
                     Console.WriteLine("No commands specified.");
                     Exit(executor, parser, 1);
                 }
-            }
-            else
-            {
-                Console.WriteLine("Invalid connection settings.");
-                Exit(executor, parser, 1);
             }
 
             return options;
@@ -157,7 +153,8 @@ namespace BNet
             Console.WriteLine(executor.GetCommandsHelp());
             Console.WriteLine();
             Console.WriteLine("Examples: bnet -b SampleBatch.bnet -svc 60");
-            Console.WriteLine("          bnet -u rconpass@127.0.0.1:2302 -u rconpass@127.0.0.1:3302 -svc 60 -c getplayers -c update_dbplayers");
+            Console.WriteLine(
+                "          bnet -u rconpass@127.0.0.1:2302 -u rconpass@127.0.0.1:3302 -svc 60 -c getplayers -c update_dbplayers");
             Console.WriteLine();
             Console.WriteLine("Press any key to exit...");
             Console.ReadKey();
@@ -186,7 +183,6 @@ namespace BNet
                 return false;
             }
 
-
             // Get db settings even if we don't need to get the servers from it
             executor.DbConnectionString = GetIniDbConnectionString(data);
 
@@ -205,8 +201,9 @@ namespace BNet
                 var serverUris = from keyData in data["Servers"]
                                  where keyData.KeyName != "UseBNetDb"
                                  select keyData.Value;
-                executor.Servers = ParseServerUris(serverUris, executor.DbConnectionString);
+                executor.Servers = ParseServerUris(serverUris);
             }
+
             if (executor.Servers == null || !executor.Servers.Any())
             {
                 Console.WriteLine("No servers specified.");
@@ -219,6 +216,7 @@ namespace BNet
                 Console.WriteLine("No commands specified.");
                 return false;
             }
+
             return true;
         }
 
@@ -316,7 +314,8 @@ namespace BNet
         }
 
 
-        private static IEnumerable<ServerInfo> ParseServerUris(IEnumerable<string> serverStrings, string dbConnectionString)
+        private static IEnumerable<ServerInfo> ParseServerUris(
+            IEnumerable<string> serverStrings)
         {
             var results = new List<ServerInfo>();
             int id = 0;
@@ -358,7 +357,12 @@ namespace BNet
                         });
             }
 
-            return results;
+            if (results.Count > 0)
+            {
+                return results;
+            }
+
+            return null;
         }
 
 

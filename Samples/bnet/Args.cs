@@ -11,6 +11,12 @@ namespace BNet
         EnabledOptionStyles = OptionStyles.Unix | OptionStyles.Windows)]
     internal class Args
     {
+        public Args()
+        {
+            this.Servers = new List<string>();
+            this.Commands = new List<string>();
+        }
+
         [CommandLineOption(Name = "svc", Aliases = "s", MinOccurs = 0, MaxOccurs = 1, 
             Description = "Run as a service, execute commands every n seconds")]
         public int AsService { get; set; }

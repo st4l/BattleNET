@@ -113,7 +113,7 @@ namespace BNet
 
             if (parser.HasErrors)
             {
-                Exit(executor, parser, 0);
+                Exit(executor, parser, 1);
             }
 
             if (options.BatchFile != null)

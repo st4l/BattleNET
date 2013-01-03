@@ -32,15 +32,15 @@ namespace BNet
             XmlConfigurator.ConfigureAndWatch(new FileInfo("log4net.config"));
             SetupIoC();
 
-            var app = Container.Resolve<CommandExecutor>();
-            var options = GetAppArguments(app);
-
 #if DEBUG
 
             // Give me a chance to attach the debugger... (launching from .bat)
             Console.WriteLine("Press Enter to begin...");
             Console.ReadLine();
 #endif
+
+            var app = Container.Resolve<CommandExecutor>();
+            var options = GetAppArguments(app);
 
             // No errors present and all arguments correct 
             // Do work according to arguments   
@@ -123,7 +123,7 @@ namespace BNet
                     Exit(executor, parser, 1);
                 }
             }
-            else if (options.Servers.Count > 0)
+            else if (options.Servers != null && options.Servers.Count > 0)
             {
                 executor.Servers = ParseServerUris(options.Servers, null);
                 if (executor.Servers == null || !executor.Servers.Any())
@@ -151,8 +151,14 @@ namespace BNet
 
         private static void Exit(CommandExecutor executor, CommandLineParser parser, int errorLevel)
         {
+            Console.WriteLine();
+            Console.WriteLine();
             Console.WriteLine(parser.UsageInfo.ToString(78, true));
             Console.WriteLine(executor.GetCommandsHelp());
+            Console.WriteLine();
+            Console.WriteLine("Examples: bnet -b SampleBatch.bnet -svc 60");
+            Console.WriteLine("          bnet -u rconpass@127.0.0.1:2302 -u rconpass@127.0.0.1:3302 -svc 60 -c getplayers -c update_dbplayers");
+            Console.WriteLine();
             Console.WriteLine("Press any key to exit...");
             Console.ReadKey();
             Environment.Exit(errorLevel);

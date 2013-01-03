@@ -11,23 +11,23 @@ namespace BNet
         EnabledOptionStyles = OptionStyles.Unix | OptionStyles.Windows)]
     internal class Args
     {
-        [CommandLineOption(Name = "service", Aliases = "svc", MinOccurs = 0, MaxOccurs = 1, 
-            Description = "Run as a service (do not exit), execute command every n seconds")]
+        [CommandLineOption(Name = "svc", Aliases = "s", MinOccurs = 0, MaxOccurs = 1, 
+            Description = "Run as a service, execute commands every n seconds")]
         public int AsService { get; set; }
 
         [CommandLineOption(Name = "batch", Aliases = "b", MinOccurs = 0, 
-            Prohibits = "command,server", Description = "Run bnet batch file.")]
+            Prohibits = "cmd,uri", Description = "Run bnet batch file.")]
         public string BatchFile { get; set; }
 
-        [CommandLineOption(Name = "server", Aliases = "s", MinOccurs = 0, Prohibits = "batch", 
+        [CommandLineOption(Name = "uri", Aliases = "u", MinOccurs = 0, Prohibits = "batch", 
             Description = "Server connection details. Format: password@hostname:port")]
         public List<string> Servers { get; set; }
 
-        [CommandLineOption(Name = "command", Aliases = "c", MinOccurs = 0, Prohibits = "batch", 
+        [CommandLineOption(Name = "cmd", Aliases = "c", MinOccurs = 0, Prohibits = "batch", 
             Description = "Command to send")]
         public List<string> Commands { get; set; }
 
-        [CommandLineOption(Name = "help", Aliases = "?>", Description = "Shows this help text")]
+        [CommandLineOption(Name = "help", Aliases = "?", Description = "Shows this help text")]
         public bool Help { get; set; }
 
         [CommandLineOption(Name = "v", Aliases = "verbose", Description = "Produce verbose output")]

@@ -1,0 +1,112 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<useCaseModelRoot xmlns:dm0="http://schemas.microsoft.com/VisualStudio/2008/DslTools/Core" xmlns:dm1="http://schemas.microsoft.com/dsltools/Kernel" xmlns:dm2="http://schemas.microsoft.com/dsltools/Component" xmlns:dm3="http://schemas.microsoft.com/dsltools/UseCase" xmlns:dm4="http://schemas.microsoft.com/dsltools/Activity" xmlns:dm5="http://schemas.microsoft.com/dsltools/Interaction" xmlns:dm6="http://schemas.microsoft.com/dsltools/UmlModelLibrary" xmlns:dm7="http://schemas.microsoft.com/dsltools/UmlDiagrams" xmlns:dm8="http://schemas.microsoft.com/dsltools/ModelStore" xmlns:dm9="http://schemas.microsoft.com/dsltools/SimpleShapesModel" dslVersion="1.0.0.0" Id="d8d5b124-d83f-4ced-8cef-57e3d031b3a4" name="Usecases1" linkedPackageId="ab02cd6d-3341-440a-b238-4783968fadbc" xmlns="http://schemas.microsoft.com/dsltools/UseCaseModel">
+  <profileInstances>
+    <packageHasProfileInstances Id="ef98df0e-7c2e-4583-a8f5-4fbd232b2bdb">
+      <profileInstance Id="0214f265-ed62-4bf3-955b-85b339752916" name="StandardProfileL2">
+        <elementDefinition Id="e34d544e-0fea-4ed6-ac5e-1b74119ac791" />
+      </profileInstance>
+      <elementDefinition Id="0caec977-1f8c-4ba3-a7db-8cc9ad9cc73b" />
+    </packageHasProfileInstances>
+    <packageHasProfileInstances Id="48b3bfe8-456a-4c4a-a3f5-5695143c1c2a">
+      <profileInstance Id="81309a6b-43e8-4d6d-bf90-d1a5a4fddc33" name="StandardProfileL3">
+        <elementDefinition Id="532ea607-fb19-44b8-8502-3351b05452be" />
+      </profileInstance>
+      <elementDefinition Id="29349502-908c-4fda-9054-c48619c59ed0" />
+    </packageHasProfileInstances>
+  </profileInstances>
+  <packagedElements>
+    <useCaseModelRootHasTypes>
+      <actor Id="f28f4bc7-1618-4459-aabb-4581235a75c9" name="User" isAbstract="false" isLeaf="false">
+        <elementDefinition Id="8e156695-9c4a-4024-afd6-01329f24fcc1" />
+        <targetEnds>
+          <association Id="a9c86282-9bad-4c84-8d42-4ad415a2a223" isDerived="false" sourceEndRoleName="User" targetEndRoleName="See online players" isLeaf="false" isAbstract="false">
+            <useCaseMoniker Id="efc11d9b-8482-48d8-9012-319743c32f07" LastKnownName="See online players" />
+            <relationshipOwnedElementsInternal>
+              <associationHasOwnedEnds>
+                <memberEnd Id="a7af6c0c-8600-412a-a877-91b7389d8c5a" name="User" isLeaf="false" isStatic="false" isReadOnly="false" isDerived="false" isDerivedUnion="false" aggregation="None" isComposite="false" isNavigableOwned="false">
+                  <elementDefinition Id="c2e2c232-0752-4478-b0c1-1c133bda53d7" />
+                </memberEnd>
+              </associationHasOwnedEnds>
+              <associationHasOwnedEnds>
+                <memberEnd Id="240ce2c5-0fe1-423d-8b1c-42f3867246c2" name="See online players" isLeaf="false" isStatic="false" isReadOnly="false" isDerived="false" isDerivedUnion="false" aggregation="None" isComposite="false">
+                  <elementDefinition Id="b232dab4-874a-44cf-a49b-5a495209e328" />
+                </memberEnd>
+              </associationHasOwnedEnds>
+            </relationshipOwnedElementsInternal>
+            <elementDefinition Id="a841ee37-de18-4e75-b8bb-751f08b05861" />
+          </association>
+          <association Id="637d4616-fd33-470f-b63c-aed0d6fdbc33" isDerived="false" sourceEndRoleName="User" targetEndRoleName="Populate online players in the Database" isLeaf="false" isAbstract="false">
+            <useCaseMoniker Id="9cd7a14f-39b0-43a8-a0dd-9103314da99a" LastKnownName="Populate online players in the Database" />
+            <relationshipOwnedElementsInternal>
+              <associationHasOwnedEnds>
+                <memberEnd Id="c9f33305-2e2f-4f15-b1db-34f5a5e76b7c" name="User" isLeaf="false" isStatic="false" isReadOnly="false" isDerived="false" isDerivedUnion="false" aggregation="None" isComposite="false" isNavigableOwned="false">
+                  <elementDefinition Id="f2db4e5e-c9bb-40bf-a479-ac265ad79df5" />
+                </memberEnd>
+              </associationHasOwnedEnds>
+              <associationHasOwnedEnds>
+                <memberEnd Id="93e1eeec-6f55-4659-829d-01f27aff1bb6" name="Populate online players in the Database" isLeaf="false" isStatic="false" isReadOnly="false" isDerived="false" isDerivedUnion="false" aggregation="None" isComposite="false">
+                  <elementDefinition Id="421deea5-f5fc-41dd-9185-d57d3bf99db2" />
+                </memberEnd>
+              </associationHasOwnedEnds>
+            </relationshipOwnedElementsInternal>
+            <elementDefinition Id="de173dc0-b491-4edd-9f15-432b9bba640f" />
+          </association>
+          <association Id="e81dcca1-e4d1-485e-8b75-56f9e1ee465c" isDerived="false" sourceEndRoleName="User" targetEndRoleName="Run a batch of rcon Commands" isLeaf="false" isAbstract="false">
+            <useCaseMoniker Id="c4f45ecb-2e2b-44d6-9af6-d1668ceb9444" LastKnownName="Run a batch of rcon Commands" />
+            <relationshipOwnedElementsInternal>
+              <associationHasOwnedEnds>
+                <memberEnd Id="7939cf0c-dc00-4112-94fd-3d706b4d1fcb" name="User" isLeaf="false" isStatic="false" isReadOnly="false" isDerived="false" isDerivedUnion="false" aggregation="None" isComposite="false" isNavigableOwned="false">
+                  <elementDefinition Id="d5fcc125-edb0-4ec7-8107-a63870309027" />
+                </memberEnd>
+              </associationHasOwnedEnds>
+              <associationHasOwnedEnds>
+                <memberEnd Id="b0b36b14-5825-4bc3-9b93-a273979ed0d6" name="Run a batch of rcon Commands" isLeaf="false" isStatic="false" isReadOnly="false" isDerived="false" isDerivedUnion="false" aggregation="None" isComposite="false">
+                  <elementDefinition Id="38fa59cb-8935-4e26-86de-2cd6dc156ae2" />
+                </memberEnd>
+              </associationHasOwnedEnds>
+            </relationshipOwnedElementsInternal>
+            <elementDefinition Id="29bfdd00-0542-4daa-8019-4c9e075fd01a" />
+          </association>
+        </targetEnds>
+      </actor>
+    </useCaseModelRootHasTypes>
+    <useCaseModelRootHasTypes>
+      <useCase Id="efc11d9b-8482-48d8-9012-319743c32f07" name="See online players" isAbstract="false" isLeaf="false">
+        <elementDefinition Id="6fa83053-28aa-480c-94ca-628d64a36320" />
+        <subjects>
+          <subsystemMoniker Id="7fa0d402-da94-4211-aa4d-98d2cca37709" LastKnownName="bnet" />
+        </subjects>
+      </useCase>
+    </useCaseModelRootHasTypes>
+    <useCaseModelRootHasTypes>
+      <subsystem Id="7fa0d402-da94-4211-aa4d-98d2cca37709" name="bnet" isAbstract="false" isLeaf="false" isActiveClass="false">
+        <elementDefinition Id="d478183f-8e9b-43d1-a008-228669072856" />
+      </subsystem>
+    </useCaseModelRootHasTypes>
+    <packageHasNamedElement>
+      <useCase Id="9cd7a14f-39b0-43a8-a0dd-9103314da99a" name="Populate online players in the Database" isAbstract="false" isLeaf="false">
+        <elementDefinition Id="01ed3031-2368-4413-b79d-86ea3002bfe1" />
+        <generalsInternal>
+          <generalization Id="8c369789-7339-4bf9-816f-afc8fa9a3d7c" isSubstitutable="false">
+            <useCaseMoniker Id="efc11d9b-8482-48d8-9012-319743c32f07" LastKnownName="See online players" />
+            <elementDefinition Id="a78dc1b4-0eb1-45b4-8e08-65ae7b640a8d" />
+          </generalization>
+        </generalsInternal>
+        <subjects>
+          <subsystemMoniker Id="7fa0d402-da94-4211-aa4d-98d2cca37709" LastKnownName="bnet" />
+        </subjects>
+      </useCase>
+    </packageHasNamedElement>
+    <packageHasNamedElement>
+      <useCase Id="c4f45ecb-2e2b-44d6-9af6-d1668ceb9444" name="Run a batch of rcon Commands" isAbstract="false" isLeaf="false">
+        <elementDefinition Id="bfadf966-9197-43ae-806d-b0be16b57223" />
+        <subjects>
+          <subsystemMoniker Id="7fa0d402-da94-4211-aa4d-98d2cca37709" LastKnownName="bnet" />
+        </subjects>
+      </useCase>
+    </packageHasNamedElement>
+  </packagedElements>
+  <package Id="ab02cd6d-3341-440a-b238-4783968fadbc" name="bnet.SoftDesign">
+    <elementDefinition Id="b82fc4c2-ea4b-4f56-9a93-bd131a829afc" />
+  </package>
+</useCaseModelRoot>

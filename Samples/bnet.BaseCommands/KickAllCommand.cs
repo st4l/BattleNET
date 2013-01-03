@@ -1,8 +1,8 @@
-﻿namespace bnet.BaseCommands
+﻿namespace BNet.BaseCommands
 {
     using System.Globalization;
+    using BNet.IoC;
     using BattleNET;
-    using bnet.IoC;
 
 
     public class KickAllCommand : RConCommandBase

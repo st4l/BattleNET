@@ -1,4 +1,4 @@
-﻿namespace bnet.BaseCommands
+﻿namespace BNet.BaseCommands
 {
     public class PlayerInfo
     {

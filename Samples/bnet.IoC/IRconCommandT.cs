@@ -1,4 +1,4 @@
-﻿namespace bnet.IoC
+﻿namespace BNet.IoC
 {
     using BattleNET;
 
@@ -10,6 +10,6 @@
 
         void ExecAwaitResponse(BattlEyeClient beClient, int timeoutSecs);
 
-        bool ExecSingleAwaitResponse(BattlEyeLoginCredentials credentials);
+        bool ExecSingleAwaitResponse(ServerInfo serverInfo);
     }
 }

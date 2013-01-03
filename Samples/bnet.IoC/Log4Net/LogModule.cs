@@ -1,4 +1,4 @@
-﻿namespace bnet.IoC.Log4Net
+﻿namespace BNet.IoC.Log4Net
 {
     using System;
     using System.Linq;

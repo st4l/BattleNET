@@ -1,4 +1,4 @@
-﻿namespace bnet.Tests
+﻿namespace BNet.Tests
 {
     using System;
     using log4net;

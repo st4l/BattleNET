@@ -1,4 +1,4 @@
-﻿namespace bnet.IoC
+﻿namespace BNet.IoC
 {
     using System;
     using System.Threading;
@@ -38,9 +38,9 @@
         }
 
 
-        public virtual bool ExecSingleAwaitResponse(BattlEyeLoginCredentials credentials)
+        public virtual bool ExecSingleAwaitResponse(ServerInfo serverInfo)
         {
-            var beClient = new BattlEyeClient(credentials)
+            var beClient = new BattlEyeClient(serverInfo.LoginCredentials)
                                {
                                    ReconnectOnPacketLoss = true, 
                                    DiscardConsoleMessages = true

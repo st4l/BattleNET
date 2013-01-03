@@ -1,4 +1,7 @@
-﻿namespace BNet
+﻿// ----------------------------------------------------------------------------------------------------
+// <copyright file="CommandExecutor.cs" company="Me">Copyright (c) 2012 St4l.</copyright>
+// ----------------------------------------------------------------------------------------------------
+namespace BNet
 {
     using System;
     using System.Collections.Generic;
@@ -7,7 +10,7 @@
     using System.Text;
     using System.Threading;
     using BattleNET;
-    using bnet.IoC;
+    using BNet.IoC;
     using log4net;
 
 
@@ -15,19 +18,86 @@
     {
         private List<Timer> runningTimers;
 
-        public Dictionary<string, IRConCommand> Commands { get; internal set; }
+
+        public CommandExecutor(IEnumerable<IRConCommand> commands)
+        {
+            this.BNetCommands =
+                commands.ToDictionary(c => c.Name.ToLower(CultureInfo.InvariantCulture));
+        }
+
 
         public ILog Log { get; set; }
 
-        public BattlEyeLoginCredentials LoginCredentials { get; set; }
+        public Dictionary<string, IRConCommand> BNetCommands { get; internal set; }
+
+        public IEnumerable<ServerInfo> Servers { get; set; }
+
+        public IEnumerable<string> Commands { get; set; }
+
+        public string BNetDbConnectionString { get; set; }
 
 
-        public void ExecuteCommand(string command, object state = null)
+        public string GetCommandsHelp()
         {
-            command = command.ToLower(CultureInfo.InvariantCulture);
-            if (this.Commands.ContainsKey(command))
+            var sb = new StringBuilder();
+            sb.AppendLine("Available extra commands:");
+
+            foreach (var command in this.BNetCommands)
             {
-                IRConCommand cmdInstance = this.Commands[command];
+                sb.AppendFormat("{0} - {1}", command.Value.Name, command.Value.Description);
+                sb.AppendLine();
+            }
+
+            return sb.ToString();
+        }
+
+
+        public void StartService(int period)
+        {
+            this.runningTimers = new List<Timer>();
+
+            int start = 1000;
+            period *= 1000;
+            foreach (var serverInfo in this.Servers)
+            {
+                foreach (string command in this.Commands)
+                {
+                    var context = new CommandExecContext
+                                      {
+                                          CommandString = command, 
+                                          Server = serverInfo
+                                      };
+                    var timer = new Timer(this.ExecuteTimedCommand, context, start, period);
+                    start += 1000;
+                    this.runningTimers.Add(timer);
+                }
+            }
+        }
+
+
+        public void ExecuteCommands()
+        {
+            foreach (var serverInfo in this.Servers)
+            {
+                foreach (string command in this.Commands)
+                {
+                    var context = new CommandExecContext
+                                      {
+                                          CommandString = command, 
+                                          Server = serverInfo
+                                      };
+                    this.ExecuteCommand(context);
+                }
+            }
+        }
+
+
+        private void ExecuteCommand(CommandExecContext commandCtx)
+        {
+            string command = commandCtx.CommandString.ToLower(CultureInfo.InvariantCulture);
+            if (this.BNetCommands.ContainsKey(command))
+            {
+                IRConCommand cmdInstance = this.BNetCommands[command];
 
                 // TODO: ugly, ugly... 
                 bool hasResults =
@@ -43,11 +113,11 @@
                     {
                         // use covariance to get the generic version's virtual table               
                         ((IRConCommand<object>)cmdInstance).ExecSingleAwaitResponse(
-                            this.LoginCredentials);
+                            commandCtx.Server);
                     }
                     else
                     {
-                        cmdInstance.ExecuteSingle(this.LoginCredentials);
+                        cmdInstance.ExecuteSingle(commandCtx.Server.LoginCredentials);
                     }
                 }
                 catch (TimeoutException timeoutException)
@@ -61,52 +131,15 @@
             }
             else
             {
-                this.ExecCustomCmd(command);
+                this.ExecCustomCmd(commandCtx);
             }
         }
 
 
-        public string GetCommandsHelp()
+        private void ExecCustomCmd(CommandExecContext commandCtx)
         {
-            var sb = new StringBuilder();
-            sb.AppendLine("Available extra commands:");
-
-            foreach (var command in this.Commands)
-            {
-                sb.AppendFormat("{0} - {1}", command.Value.Name, command.Value.Description);
-                sb.AppendLine();
-            }
-
-            return sb.ToString();
-        }
-
-
-        public void StartService(string[] commands, int period)
-        {
-            this.runningTimers = new List<Timer>();
-
-            int start = 1000;
-            period *= 1000;
-            foreach (string command in commands)
-            {
-                var timer = new Timer(this.ExecuteTimedCommand, command, start, period);
-                start += 1000;
-                this.runningTimers.Add(timer);
-            }
-        }
-
-
-        #region Methods
-
-        private void Disconnected(BattlEyeDisconnectEventArgs args)
-        {
-            this.Log.Info(args.Message);
-        }
-
-
-        private void ExecCustomCmd(string command)
-        {
-            var beClient = new BattlEyeClient(this.LoginCredentials);
+            string command = commandCtx.CommandString;
+            var beClient = new BattlEyeClient(commandCtx.Server.LoginCredentials);
 
             // beClient.MessageReceived += OutputMessage;
             beClient.DisconnectEvent += this.Disconnected;
@@ -114,7 +147,7 @@
             beClient.Connect();
 
             this.Log.Info("> " + command);
-            var result = beClient.SendCommandPacket(command, false);
+            BattlEyeCommandResult result = beClient.SendCommandPacket(command, false);
             this.Log.Info(result.ToString());
 
             while (beClient.CommandQueue > 0)
@@ -130,7 +163,13 @@
 
         private void ExecuteTimedCommand(object state)
         {
-            this.ExecuteCommand((string)state);
+            this.ExecuteCommand((CommandExecContext)state);
+        }
+
+
+        private void Disconnected(BattlEyeDisconnectEventArgs args)
+        {
+            this.Log.Info(args.Message);
         }
 
 
@@ -139,6 +178,12 @@
             this.Log.Info(args.Message);
         }
 
-        #endregion
+
+        private class CommandExecContext
+        {
+            public ServerInfo Server { get; set; }
+
+            public string CommandString { get; set; }
+        }
     }
 }

@@ -1,6 +1,6 @@
-﻿namespace bnet.Tests
+﻿namespace BNet.Tests
 {
-    using bnet.BaseCommands;
+    using BNet.BaseCommands;
     using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 

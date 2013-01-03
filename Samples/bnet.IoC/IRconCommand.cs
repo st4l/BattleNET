@@ -1,4 +1,4 @@
-﻿namespace bnet.IoC
+﻿namespace BNet.IoC
 {
     using BattleNET;
     using log4net;

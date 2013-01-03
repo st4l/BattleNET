@@ -1,9 +1,12 @@
-﻿namespace bnet.BaseCommands
+﻿// ----------------------------------------------------------------------------------------------------
+// <copyright file="GetPlayersCommand.cs" company="Me">Copyright (c) 2012 St4l.</copyright>
+// ----------------------------------------------------------------------------------------------------
+namespace BNet.BaseCommands
 {
     using System;
     using System.Collections.Generic;
     using System.Globalization;
-    using bnet.IoC;
+    using BNet.IoC;
 
 
     public class GetPlayersCommand : RConCommandBase<List<PlayerInfo>>
@@ -23,8 +26,6 @@
             get { return "players"; }
         }
 
-
-        #region Methods
 
         protected override List<PlayerInfo> ParseResponse(string rawResponse)
         {
@@ -110,7 +111,5 @@
             this.Log.InfoFormat("{0} players", results.Count);
             this.Log.Info("---");
         }
-
-        #endregion
     }
 }

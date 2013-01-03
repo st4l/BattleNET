@@ -1,4 +1,4 @@
-﻿namespace bnet.AdvCommands.misc
+﻿namespace BNet.AdvCommands.misc
 {
     using System.Data.Entity;
 

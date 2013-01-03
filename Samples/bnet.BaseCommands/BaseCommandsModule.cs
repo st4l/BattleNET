@@ -1,7 +1,7 @@
-﻿namespace bnet.BaseCommands
+﻿namespace BNet.BaseCommands
 {
     using Autofac;
-    using bnet.IoC;
+    using BNet.IoC;
 
 
     public class BaseCommandsModule : Module

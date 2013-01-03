@@ -3,10 +3,11 @@ UseBNetDb=true
 
 [Commands]
 1=update_dbplayers
+2=getplayers
 
 [Database]
 Host=localhost
 Port=3306
-Database=dayzcp
+Database=bnet
 Username=dayzcp
 Password=topSecret123

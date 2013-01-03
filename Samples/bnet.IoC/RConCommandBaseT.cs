@@ -11,7 +11,7 @@
         public TResultType Result { get; protected set; }
 
 
-        public virtual void ExecAwaitResponse(BattlEyeClient beClient, int timeoutSecs = 10)
+        public virtual bool ExecAwaitResponse(BattlEyeClient beClient, int timeoutSecs = 10)
         {
             this.Execute(beClient, timeoutSecs);
 
@@ -35,12 +35,13 @@
                 throw new ApplicationException(
                     "ERROR: Could not parse response: \r\n" + this.RawResponse, e);
             }
+            return this.Result != null;
         }
 
 
-        public virtual bool ExecSingleAwaitResponse(ServerInfo serverInfo)
+        public virtual bool ExecSingleAwaitResponse()
         {
-            var beClient = new BattlEyeClient(serverInfo.LoginCredentials)
+            var beClient = new BattlEyeClient(Context.Server.LoginCredentials)
                                {
                                    ReconnectOnPacketLoss = true, 
                                    DiscardConsoleMessages = true

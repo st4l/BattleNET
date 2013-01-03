@@ -105,49 +105,57 @@ namespace BNet
             {
                 Console.WriteLine(parser.UsageInfo.ToString(78, false));
                 Console.WriteLine(executor.GetCommandsHelp());
+                Console.WriteLine();
+                Console.WriteLine("Press any key to exit...");
                 Console.ReadKey();
                 Environment.Exit(0);
             }
 
             if (parser.HasErrors)
             {
-                ExitWithError(executor, parser);
+                Exit(executor, parser, 0);
             }
 
-            if (options.Servers.Count > 0)
-            {
-                executor.Servers = ParseServerUris(options.Servers);
-                if (executor.Servers == null)
-                {
-                    ExitWithError(executor, parser);
-                }
-            }
-            else if (options.BatchFile != null)
+            if (options.BatchFile != null)
             {
                 if (!ParseBatchFile(options.BatchFile, executor))
                 {
-                    ExitWithError(executor, parser);
+                    Exit(executor, parser, 1);
+                }
+            }
+            else if (options.Servers.Count > 0)
+            {
+                executor.Servers = ParseServerUris(options.Servers, null);
+                if (executor.Servers == null || !executor.Servers.Any())
+                {
+                    Console.WriteLine("No servers specified.");
+                    Exit(executor, parser, 1);
+                }
+
+                executor.Commands = options.Commands;
+                if (executor.Commands == null || !executor.Commands.Any())
+                {
+                    Console.WriteLine("No commands specified.");
+                    Exit(executor, parser, 1);
                 }
             }
             else
             {
                 Console.WriteLine("Invalid connection settings.");
-                Console.WriteLine(parser.UsageInfo.ToString(78, true));
-                Console.WriteLine(executor.GetCommandsHelp());
-                Console.ReadKey();
-                Environment.Exit(1);
+                Exit(executor, parser, 1);
             }
 
             return options;
         }
 
 
-        private static void ExitWithError(CommandExecutor executor, CommandLineParser parser)
+        private static void Exit(CommandExecutor executor, CommandLineParser parser, int errorLevel)
         {
             Console.WriteLine(parser.UsageInfo.ToString(78, true));
             Console.WriteLine(executor.GetCommandsHelp());
+            Console.WriteLine("Press any key to exit...");
             Console.ReadKey();
-            Environment.Exit(1);
+            Environment.Exit(errorLevel);
         }
 
 
@@ -167,31 +175,44 @@ namespace BNet
             }
 
             if (!ValidateIniSettingExists(data, "Servers")
-                || ValidateIniSettingExists(data, "Commands"))
+                || !ValidateIniSettingExists(data, "Commands"))
             {
                 return false;
             }
 
+
+            // Get db settings even if we don't need to get the servers from it
+            executor.DbConnectionString = GetIniDbConnectionString(data);
+
             if (IsIniTrue(data["Servers"]["UseBNetDb"]))
             {
-                var connString = GetIniDbConnectionString(data);
-                if (connString == null)
+                if (executor.DbConnectionString == null)
                 {
+                    Console.WriteLine("Invalid or not specified connection string.");
                     return false;
                 }
 
-                executor.BNetDbConnectionString = connString;
-                executor.Servers = GetDbServers(connString);
+                executor.Servers = GetDbServers(executor.DbConnectionString);
             }
             else
             {
                 var serverUris = from keyData in data["Servers"]
                                  where keyData.KeyName != "UseBNetDb"
                                  select keyData.Value;
-                executor.Servers = ParseServerUris(serverUris);
+                executor.Servers = ParseServerUris(serverUris, executor.DbConnectionString);
+            }
+            if (executor.Servers == null || !executor.Servers.Any())
+            {
+                Console.WriteLine("No servers specified.");
+                return false;
             }
 
             executor.Commands = from keyData in data["Commands"] select keyData.Value;
+            if (!executor.Commands.Any())
+            {
+                Console.WriteLine("No commands specified.");
+                return false;
+            }
             return true;
         }
 
@@ -199,11 +220,11 @@ namespace BNet
         private static string GetIniDbConnectionString(IniData data)
         {
             if (!ValidateIniSettingExists(data, "Database")
-                || ValidateIniSettingExists(data, "Database", "Host")
-                || ValidateIniSettingExists(data, "Database", "Port")
-                || ValidateIniSettingExists(data, "Database", "Database")
-                || ValidateIniSettingExists(data, "Database", "Username")
-                || ValidateIniSettingExists(data, "Database", "Password"))
+                || !ValidateIniSettingExists(data, "Database", "Host")
+                || !ValidateIniSettingExists(data, "Database", "Port")
+                || !ValidateIniSettingExists(data, "Database", "Database")
+                || !ValidateIniSettingExists(data, "Database", "Username")
+                || !ValidateIniSettingExists(data, "Database", "Password"))
             {
                 return null;
             }
@@ -289,7 +310,7 @@ namespace BNet
         }
 
 
-        private static IEnumerable<ServerInfo> ParseServerUris(IEnumerable<string> serverStrings)
+        private static IEnumerable<ServerInfo> ParseServerUris(IEnumerable<string> serverStrings, string dbConnectionString)
         {
             var results = new List<ServerInfo>();
             int id = 0;
@@ -338,9 +359,8 @@ namespace BNet
         private static IEnumerable<ServerInfo> GetDbServers(string connString)
         {
             IEnumerable<ServerInfo> servers;
-            using (var db = new BNetDb())
+            using (var db = new BNetDb(connString))
             {
-                db.Database.Connection.ConnectionString = connString;
                 var dayzServers = from s in db.dayz_server select s;
 
                 servers =

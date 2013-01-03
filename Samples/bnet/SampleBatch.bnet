@@ -1,0 +1,12 @@
+﻿[Servers]
+UseBNetDb=true
+
+[Commands]
+1=update_dbplayers
+
+[Database]
+Host=localhost
+Port=3306
+Database=dayzcp
+Username=dayzcp
+Password=topSecret123

@@ -1,4 +1,7 @@
-﻿namespace BNet.IoC
+﻿// ----------------------------------------------------------------------------------------------------
+// <copyright file="RConCommandBase.cs" company="Me">Copyright (c) 2012 St4l.</copyright>
+// ----------------------------------------------------------------------------------------------------
+namespace BNet.IoC
 {
     using System;
     using BattleNET;
@@ -15,12 +18,9 @@
 
         public abstract string RConCommandText { get; }
 
-
-        #region Properties
+        public CommandExecContext Context { get; set; }
 
         protected string RawResponse { get; set; }
-
-        #endregion
 
 
         public virtual void Execute(BattlEyeClient beClient, int timeoutSecs = 10)
@@ -44,9 +44,9 @@
         }
 
 
-        public virtual bool ExecuteSingle(BattlEyeLoginCredentials credentials)
+        public virtual bool ExecuteSingle()
         {
-            var beClient = new BattlEyeClient(credentials)
+            var beClient = new BattlEyeClient(Context.Server.LoginCredentials)
                                {
                                    ReconnectOnPacketLoss = true, 
                                    DiscardConsoleMessages = true

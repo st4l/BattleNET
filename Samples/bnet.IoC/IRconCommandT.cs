@@ -1,4 +1,7 @@
-﻿namespace BNet.IoC
+﻿// ----------------------------------------------------------------------------------------------------
+// <copyright file="IRconCommandT.cs" company="Me">Copyright (c) 2012 St4l.</copyright>
+// ----------------------------------------------------------------------------------------------------
+namespace BNet.IoC
 {
     using BattleNET;
 
@@ -8,8 +11,8 @@
     {
         TResultType Result { get; }
 
-        void ExecAwaitResponse(BattlEyeClient beClient, int timeoutSecs);
+        bool ExecAwaitResponse(BattlEyeClient beClient, int timeoutSecs);
 
-        bool ExecSingleAwaitResponse(ServerInfo serverInfo);
+        bool ExecSingleAwaitResponse();
     }
 }

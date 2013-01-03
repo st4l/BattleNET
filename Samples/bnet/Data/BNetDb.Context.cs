@@ -18,8 +18,8 @@ namespace BNet.Data
     
     public partial class BNetDb : DbContext
     {
-        public BNetDb()
-            : base("name=BNetDb")
+        public BNetDb(string nameOrConnString)
+            : base(nameOrConnString)
         {
         }
     

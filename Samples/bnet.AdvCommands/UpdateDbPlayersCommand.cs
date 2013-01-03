@@ -3,13 +3,10 @@
 // ----------------------------------------------------------------------------------------------------
 namespace BNet.AdvCommands
 {
-    using System;
-    using System.Collections.Generic;
     using System.Data.Entity;
-    using BNet.BaseCommands;
-    using BNet.IoC;
     using BattleNET;
     using BNet.AdvCommands.misc;
+    using BNet.BaseCommands;
     using BNet.Data;
 
 
@@ -26,23 +23,11 @@ namespace BNet.AdvCommands
         }
 
 
-        public override void ExecAwaitResponse(BattlEyeClient beClient, int timeoutSecs = 10)
+        public override bool ExecAwaitResponse(BattlEyeClient beClient, int timeoutSecs = 10)
         {
-            throw new NotImplementedException();
-        }
-
-
-        public override void Execute(BattlEyeClient beClient, int timeoutSecs = 10)
-        {
-            throw new NotImplementedException();
-        }
-
-
-        public override bool ExecSingleAwaitResponse(ServerInfo serverInfo)
-        {
-            if (base.ExecSingleAwaitResponse(serverInfo))
+            if (base.ExecAwaitResponse(beClient, timeoutSecs))
             {
-                this.UpdateDatabase(serverInfo, this.Result);
+                this.UpdateDatabase();
                 return true;
             }
 
@@ -50,32 +35,20 @@ namespace BNet.AdvCommands
         }
 
 
-        #region Methods
-
-
-
-        private void LogSql(DbContext dbcontext, string command)
+        private void UpdateDatabase()
         {
-            // http://www.codeproject.com/Articles/499902/Profiling-Entity-Framework-5-in-code
-            // call HookSaveChanges extension method
-            this.Log.Debug(command);
-        }
-
-
-        private void UpdateDatabase(ServerInfo state, IEnumerable<PlayerInfo> players)
-        {
-            using (var db = new BNetDb())
+            using (var db = new BNetDb(this.Context.DbConnectionString))
             {
                 db.HookSaveChanges(this.LogSql);
 
-                db.dayz_clear_online(state.ServerId);
+                db.dayz_clear_online(this.Context.Server.ServerId);
 
-                foreach (var p in players)
+                foreach (var p in this.Result)
                 {
                     db.dayz_online.Add(
                         new dayz_online
                             {
-                                dayz_server_id = state.ServerId, 
+                                dayz_server_id = this.Context.Server.ServerId, 
                                 guid = p.Guid, 
                                 ip_address = p.IpAddress, 
                                 lobby = (byte)(p.InLobby ? 1 : 0), 
@@ -91,9 +64,11 @@ namespace BNet.AdvCommands
         }
 
 
-
-        #endregion
-
-
+        private void LogSql(DbContext dbcontext, string command)
+        {
+            // http://www.codeproject.com/Articles/499902/Profiling-Entity-Framework-5-in-code
+            // call HookSaveChanges extension method
+            this.Log.Debug(command);
+        }
     }
 }

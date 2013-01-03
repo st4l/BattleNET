@@ -162,6 +162,7 @@
       <AnalyzerSettings>
         <CollectionProperty Name="Hungarian">
           <Value>be</Value>
+          <Value>db</Value>
         </CollectionProperty>
       </AnalyzerSettings>
     </Analyzer>

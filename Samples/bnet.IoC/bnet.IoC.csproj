@@ -51,6 +51,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="CommandExecContext.cs" />
     <Compile Include="IRconCommand.cs" />
     <Compile Include="IRconCommandT.cs" />
     <Compile Include="Log4Net\Log4NetModule.cs" />

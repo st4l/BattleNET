@@ -26,15 +26,15 @@ namespace BNet
         }
 
 
-        public ILog Log { get; set; }
-
-        public Dictionary<string, IRConCommand> BNetCommands { get; internal set; }
-
         public IEnumerable<ServerInfo> Servers { get; set; }
 
         public IEnumerable<string> Commands { get; set; }
 
-        public string BNetDbConnectionString { get; set; }
+        public string DbConnectionString { get; set; }
+
+        private ILog Log { get; set; }
+
+        private Dictionary<string, IRConCommand> BNetCommands { get; set; }
 
 
         public string GetCommandsHelp()
@@ -65,7 +65,8 @@ namespace BNet
                     var context = new CommandExecContext
                                       {
                                           CommandString = command, 
-                                          Server = serverInfo
+                                          Server = serverInfo,
+                                          DbConnectionString = this.DbConnectionString
                                       };
                     var timer = new Timer(this.ExecuteTimedCommand, context, start, period);
                     start += 1000;
@@ -84,7 +85,8 @@ namespace BNet
                     var context = new CommandExecContext
                                       {
                                           CommandString = command, 
-                                          Server = serverInfo
+                                          Server = serverInfo,
+                                          DbConnectionString = this.DbConnectionString
                                       };
                     this.ExecuteCommand(context);
                 }
@@ -98,26 +100,20 @@ namespace BNet
             if (this.BNetCommands.ContainsKey(command))
             {
                 IRConCommand cmdInstance = this.BNetCommands[command];
+                cmdInstance.Context = commandCtx;
 
-                // TODO: ugly, ugly... 
-                bool hasResults =
-                    cmdInstance.GetType()
-                               .GetInterfaces()
-                               .Any(
-                                   x =>
-                                   x.IsGenericType
-                                   && x.GetGenericTypeDefinition() == typeof(IRConCommand<>));
                 try
                 {
-                    if (hasResults)
+                    // covariance FTW
+                    var instance = cmdInstance as IRConCommand<object>;
+                    if (instance != null)
                     {
                         // use covariance to get the generic version's virtual table               
-                        ((IRConCommand<object>)cmdInstance).ExecSingleAwaitResponse(
-                            commandCtx.Server);
+                        instance.ExecSingleAwaitResponse();
                     }
                     else
                     {
-                        cmdInstance.ExecuteSingle(commandCtx.Server.LoginCredentials);
+                        cmdInstance.ExecuteSingle();
                     }
                 }
                 catch (TimeoutException timeoutException)
@@ -179,11 +175,5 @@ namespace BNet
         }
 
 
-        private class CommandExecContext
-        {
-            public ServerInfo Server { get; set; }
-
-            public string CommandString { get; set; }
-        }
     }
 }

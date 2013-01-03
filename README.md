@@ -46,10 +46,19 @@ https://github.com/ziellos2k/BattleNET/blob/master/BattleNET%20client/Program.cs
 
 
 #### bnet ####
-bnet is a reference implementation with logging and extensibility in mind: you can add your own commands by implementing IRconCommand.
+bnet is a reference implementation with logging and extensibility in mind: you can add your own commands by implementing IRConCommand.
 Be sure to right click the solution in Visual Studio and select "Enable NuGet package restore" before building it.
 
-Changes to BattleNET:
+bnet is now able to:
+ * run as a service, 
+ * target multiple servers,
+ * execute periodic batch jobs through rcon,
+ * read its arguments from the command line, custom (.bnet) batch files, or its own MySql database.
+
+It includes extra commands like ```KickAll```, ```GetPlayers``` and ```UpdateDbPlayers```.
+The UpdateDbPlayers command updates the database with the currently online players.
+
+#### Changes to BattleNET: ####
 * Command responses are now received throw event CommandResponseReceived, and they don't trigger MessageEvent.
 * Optionally you can supply your own handler for the specific command you're sending with SendCommandPacket. (Recommended, see example below)
 

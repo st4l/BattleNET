@@ -9,13 +9,11 @@ namespace BNet.IoC
 
     public interface IRConCommand
     {
-        string Description { get; }
-
-        ILog Log { get; }
-
-        string Name { get; }
+        RConCommandMetadata Metadata { get; set; }
 
         string RConCommandText { get; }
+
+        ILog Log { get; }
 
         CommandExecContext Context { get; set; }
 

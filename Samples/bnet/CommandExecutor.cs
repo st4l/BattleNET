@@ -9,6 +9,7 @@ namespace BNet
     using System.Linq;
     using System.Text;
     using System.Threading;
+    using Autofac;
     using BattleNET;
     using BNet.IoC;
     using log4net;
@@ -19,10 +20,10 @@ namespace BNet
         private List<Timer> runningTimers;
 
 
-        public CommandExecutor(IEnumerable<IRConCommand> commands)
+        public CommandExecutor(IEnumerable<Lazy<IRConCommand, RConCommandMetadata>> commands)
         {
-            this.BNetCommands =
-                commands.ToDictionary(c => c.Name.ToLower(CultureInfo.InvariantCulture));
+            this.BNetCommandsMetadata = commands.ToDictionary(
+                lazy => lazy.Metadata.Name, lazy => lazy.Metadata);
         }
 
 
@@ -32,9 +33,11 @@ namespace BNet
 
         public string DbConnectionString { get; set; }
 
+        public IContainer Container { get; set; }
+
         private ILog Log { get; set; }
 
-        private Dictionary<string, IRConCommand> BNetCommands { get; set; }
+        private Dictionary<string, RConCommandMetadata> BNetCommandsMetadata { get; set; }
 
 
         public string GetCommandsHelp()
@@ -42,9 +45,9 @@ namespace BNet
             var sb = new StringBuilder();
             sb.AppendLine("Available extra commands:");
 
-            foreach (var command in this.BNetCommands)
+            foreach (var command in this.BNetCommandsMetadata)
             {
-                sb.AppendFormat("{0} - {1}", command.Value.Name, command.Value.Description);
+                sb.AppendFormat("{0} - {1}", command.Key, command.Value.Description);
                 sb.AppendLine();
             }
 
@@ -65,8 +68,9 @@ namespace BNet
                     var context = new CommandExecContext
                                       {
                                           CommandString = command, 
-                                          Server = serverInfo,
-                                          DbConnectionString = this.DbConnectionString
+                                          Server = serverInfo, 
+                                          DbConnectionString =
+                                              this.DbConnectionString
                                       };
                     var timer = new Timer(this.ExecuteTimedCommand, context, start, period);
                     start += 1000;
@@ -85,8 +89,9 @@ namespace BNet
                     var context = new CommandExecContext
                                       {
                                           CommandString = command, 
-                                          Server = serverInfo,
-                                          DbConnectionString = this.DbConnectionString
+                                          Server = serverInfo, 
+                                          DbConnectionString =
+                                              this.DbConnectionString
                                       };
                     this.ExecuteCommand(context);
                 }
@@ -97,19 +102,21 @@ namespace BNet
         private void ExecuteCommand(CommandExecContext commandCtx)
         {
             string command = commandCtx.CommandString.ToLower(CultureInfo.InvariantCulture);
-            if (this.BNetCommands.ContainsKey(command))
+            if (this.BNetCommandsMetadata.ContainsKey(command))
             {
-                IRConCommand cmdInstance = this.BNetCommands[command];
+                // new cmd()
+                var cmdInstance = this.Container.ResolveNamed<IRConCommand>(command);
+                cmdInstance.Metadata = this.BNetCommandsMetadata[command];
                 cmdInstance.Context = commandCtx;
 
                 try
                 {
                     // covariance FTW
-                    var instance = cmdInstance as IRConCommand<object>;
-                    if (instance != null)
+                    var instanceWithResults = cmdInstance as IRConCommand<object>;
+                    if (instanceWithResults != null)
                     {
                         // use covariance to get the generic version's virtual table               
-                        instance.ExecSingleAwaitResponse();
+                        instanceWithResults.ExecSingleAwaitResponse();
                     }
                     else
                     {
@@ -124,6 +131,8 @@ namespace BNet
                 {
                     this.Log.Error(applicationException.Message, applicationException);
                 }
+
+                // ~cmd()
             }
             else
             {
@@ -173,7 +182,5 @@ namespace BNet
         {
             this.Log.Info(args.Message);
         }
-
-
     }
 }

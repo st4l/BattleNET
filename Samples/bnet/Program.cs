@@ -29,9 +29,6 @@ namespace BNet
             Console.OutputEncoding = Encoding.UTF8;
             Console.Title = "bnet - " + Environment.MachineName;
 
-            XmlConfigurator.ConfigureAndWatch(new FileInfo("log4net.config"));
-            SetupIoC();
-
 #if DEBUG
 
             // Give me a chance to attach the debugger... (launching from .bat)
@@ -39,7 +36,11 @@ namespace BNet
             Console.ReadLine();
 #endif
 
+            XmlConfigurator.ConfigureAndWatch(new FileInfo("log4net.config"));
+            SetupIoC();
+
             var app = Container.Resolve<CommandExecutor>();
+            app.Container = Container;
             var options = GetAppArguments(app);
 
             // No errors present and all arguments correct 
@@ -247,8 +248,7 @@ namespace BNet
             Uri uri;
             try
             {
-                string uriString = string.Format(
-                    "mysql://{0}:{1}", host, port);
+                string uriString = string.Format("mysql://{0}:{1}", host, port);
                 uri = new Uri(uriString);
             }
             catch (UriFormatException)
@@ -256,10 +256,8 @@ namespace BNet
                 uri = null;
             }
 
-            if (uri == null || !uri.IsWellFormedOriginalString()
-                || string.IsNullOrWhiteSpace(user)
-                || string.IsNullOrWhiteSpace(pwd)
-                || string.IsNullOrWhiteSpace(db))
+            if (uri == null || !uri.IsWellFormedOriginalString() || string.IsNullOrWhiteSpace(user)
+                || string.IsNullOrWhiteSpace(pwd) || string.IsNullOrWhiteSpace(db))
             {
                 Console.WriteLine("Invalid MySql connection settings.");
                 return null;
@@ -316,8 +314,7 @@ namespace BNet
         }
 
 
-        private static IEnumerable<ServerInfo> ParseServerUris(
-            IEnumerable<string> serverStrings)
+        private static IEnumerable<ServerInfo> ParseServerUris(IEnumerable<string> serverStrings)
         {
             var results = new List<ServerInfo>();
             int id = 0;

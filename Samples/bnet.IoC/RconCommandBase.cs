@@ -10,13 +10,11 @@ namespace BNet.IoC
 
     public abstract class RConCommandBase : IRConCommand
     {
-        public abstract string Description { get; }
-
-        public ILog Log { get; set; }
-
-        public abstract string Name { get; }
+        public RConCommandMetadata Metadata { get; set; }
 
         public abstract string RConCommandText { get; }
+
+        public ILog Log { get; set; }
 
         public CommandExecContext Context { get; set; }
 
@@ -59,7 +57,7 @@ namespace BNet.IoC
                 throw new ApplicationException("ERROR: Could not connect to the server. " + connect);
             }
 
-            this.Log.DebugFormat("Sending command: '{0}'", this.Name);
+            this.Log.DebugFormat("Sending command: '{0}'", this.Metadata.Name);
             this.Execute(beClient);
             beClient.Disconnect();
             return true;

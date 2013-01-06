@@ -1,4 +1,7 @@
-﻿namespace BNet.IoC
+﻿// ----------------------------------------------------------------------------------------------------
+// <copyright file="RConCommandBaseT.cs" company="Me">Copyright (c) 2012 St4l.</copyright>
+// ----------------------------------------------------------------------------------------------------
+namespace BNet.IoC
 {
     using System;
     using System.Threading;
@@ -35,16 +38,19 @@
                 throw new ApplicationException(
                     "ERROR: Could not parse response: \r\n" + this.RawResponse, e);
             }
+
             return this.Result != null;
         }
 
 
         public virtual bool ExecSingleAwaitResponse()
         {
-            var beClient = new BattlEyeClient(Context.Server.LoginCredentials)
+            var beClient = new BattlEyeClient(this.Context.Server.LoginCredentials)
                                {
-                                   ReconnectOnPacketLoss = true, 
-                                   DiscardConsoleMessages = true
+                                   ReconnectOnPacketLoss
+                                       = true, 
+                                   DiscardConsoleMessages
+                                       = true
                                };
 
             BattlEyeConnectionResult connect = beClient.Connect();
@@ -54,7 +60,7 @@
                 throw new ApplicationException("ERROR: Could not connect to the server. " + connect);
             }
 
-            this.Log.DebugFormat("Sending command: '{0}'", this.Name);
+            this.Log.DebugFormat("Sending command: '{0}'", this.Metadata.Name);
             this.ExecAwaitResponse(beClient);
             beClient.Disconnect();
 
@@ -64,10 +70,6 @@
         }
 
 
-        #region Methods
-
         protected abstract TResultType ParseResponse(string rawResponse);
-
-        #endregion
     }
 }

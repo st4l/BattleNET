@@ -11,15 +11,6 @@ namespace BNet.BaseCommands
 
     public class GetPlayersCommand : RConCommandBase<List<PlayerInfo>>
     {
-        public override string Description
-        {
-            get { return "Retrieves the list of players online."; }
-        }
-
-        public override string Name
-        {
-            get { return "getplayers"; }
-        }
 
         public override string RConCommandText
         {

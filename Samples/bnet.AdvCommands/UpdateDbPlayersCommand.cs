@@ -13,17 +13,6 @@ namespace BNet.AdvCommands
 
     public class UpdateDbPlayersCommand : GetPlayersCommand
     {
-        public override string Description
-        {
-            get { return "Updates online players in the database."; }
-        }
-
-        public override string Name
-        {
-            get { return "update_dbplayers"; }
-        }
-
-
         public override bool ExecAwaitResponse(BattlEyeClient beClient, int timeoutSecs = 10)
         {
             if (base.ExecAwaitResponse(beClient, timeoutSecs))

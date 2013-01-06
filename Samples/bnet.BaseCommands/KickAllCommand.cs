@@ -1,8 +1,11 @@
-﻿namespace BNet.BaseCommands
+﻿// ----------------------------------------------------------------------------------------------------
+// <copyright file="KickAllCommand.cs" company="Me">Copyright (c) 2012 St4l.</copyright>
+// ----------------------------------------------------------------------------------------------------
+namespace BNet.BaseCommands
 {
     using System.Globalization;
-    using BNet.IoC;
     using BattleNET;
+    using BNet.IoC;
 
 
     public class KickAllCommand : RConCommandBase
@@ -13,17 +16,7 @@
         }
 
 
-        public override string Description
-        {
-            get { return "Kicks all players from the server."; }
-        }
-
         public string KickReason { get; set; }
-
-        public override string Name
-        {
-            get { return "kickall"; }
-        }
 
         public override string RConCommandText
         {

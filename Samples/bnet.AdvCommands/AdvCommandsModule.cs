@@ -4,6 +4,7 @@
 namespace BNet.AdvCommands
 {
     using Autofac;
+    using Autofac.Builder;
     using BNet.IoC;
 
 
@@ -11,7 +12,20 @@ namespace BNet.AdvCommands
     {
         protected override void Load(ContainerBuilder builder)
         {
-            builder.RegisterType<UpdateDbPlayersCommand>().As<IRConCommand>().PropertiesAutowired();
+            builder.RegisterType<UpdateDbPlayersCommand>()
+                   .As<IRConCommand>()
+                   .Named<IRConCommand>("update_dbplayers")
+                   .WithMetadata<RConCommandMetadata>(GetUpdateDbPlayersMetadata)
+                   .PropertiesAutowired();
+        }
+
+
+        private static void GetUpdateDbPlayersMetadata(
+            MetadataConfiguration<RConCommandMetadata> metadataConfiguration)
+        {
+            metadataConfiguration
+                .For(am => am.Name, "update_dbplayers")
+                .For(am => am.Description, "Updates online players in the database.");
         }
     }
 }

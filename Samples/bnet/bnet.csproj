@@ -69,7 +69,7 @@
       <HintPath>..\..\..\..\packages\EntityFramework.5.0.0\lib\net45\EntityFramework.dll</HintPath>
     </Reference>
     <Reference Include="INIFileParser">
-      <HintPath>..\..\..\..\packages\ini-parser.1.7.1\lib\INIFileParser.dll</HintPath>
+      <HintPath>..\packages\ini-parser.1.7.1\lib\INIFileParser.dll</HintPath>
     </Reference>
     <Reference Include="log4net">
       <HintPath>..\packages\log4net.2.0.0\lib\net40-full\log4net.dll</HintPath>
@@ -92,7 +92,6 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Args.cs" />
-    <Compile Include="CommandExecutor.cs" />
     <Compile Include="Data\BNetDb.Context.cs">
       <DependentUpon>BNetDb.Context.tt</DependentUpon>
       <AutoGen>True</AutoGen>

@@ -6,7 +6,7 @@
     <ProjectGuid>{A888CB03-BA00-4611-B761-910989499337}</ProjectGuid>
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>bnet.Tests</RootNamespace>
+    <RootNamespace>BNet.Tests</RootNamespace>
     <AssemblyName>bnet.Tests</AssemblyName>
     <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>

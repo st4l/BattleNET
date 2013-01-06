@@ -7,7 +7,7 @@
     <ProjectGuid>{3C948B25-A0E8-4231-9A48-37C371D5BF5C}</ProjectGuid>
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>bnet.IoC</RootNamespace>
+    <RootNamespace>BNet.IoC</RootNamespace>
     <AssemblyName>bnet.IoC</AssemblyName>
     <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
@@ -43,6 +43,7 @@
       <HintPath>..\packages\log4net.2.0.0\lib\net40-full\log4net.dll</HintPath>
     </Reference>
     <Reference Include="System" />
+    <Reference Include="System.ComponentModel.Composition" />
     <Reference Include="System.Core" />
     <Reference Include="System.Xml.Linq" />
     <Reference Include="System.Data.DataSetExtensions" />
@@ -52,6 +53,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="CommandExecContext.cs" />
+    <Compile Include="CommandExecutor.cs" />
     <Compile Include="IRconCommand.cs" />
     <Compile Include="IRconCommandT.cs" />
     <Compile Include="Log4Net\Log4NetModule.cs" />

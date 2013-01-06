@@ -5,8 +5,8 @@
     <!-- Diagram content (shape and connector positions) -->
     <edmx:Diagrams>
       <Diagram DiagramId="b8a62b68428543cca4c74cf062631ee8" Name="Diagram1">
-        <EntityTypeShape EntityType="BNetDbModel.dayz_online" Width="1.5" PointX="0.75" PointY="0.75" IsExpanded="true" />
         <EntityTypeShape EntityType="BNetDbModel.dayz_server" Width="1.5" PointX="2.75" PointY="0.75" IsExpanded="true" />
+        <EntityTypeShape EntityType="BNetDbModel.dayz_online" Width="1.5" PointX="0.625" PointY="1" />
       </Diagram>
     </edmx:Diagrams>
   </edmx:Designer>

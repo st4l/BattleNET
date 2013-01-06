@@ -4,7 +4,7 @@
   <edmx:Runtime>
     <!-- SSDL content -->
     <edmx:StorageModels>
-      <Schema Namespace="BNetDbModel.Store" Alias="Self" Provider="MySql.Data.MySqlClient" ProviderManifestToken="5.5" xmlns:store="http://schemas.microsoft.com/ado/2007/12/edm/EntityStoreSchemaGenerator" xmlns="http://schemas.microsoft.com/ado/2009/11/edm/ssdl">
+    <Schema Namespace="BNetDbModel.Store" Alias="Self" Provider="MySql.Data.MySqlClient" ProviderManifestToken="5.5" xmlns:store="http://schemas.microsoft.com/ado/2007/12/edm/EntityStoreSchemaGenerator" xmlns="http://schemas.microsoft.com/ado/2009/11/edm/ssdl">
         <EntityContainer Name="BNetDbModelStoreContainer">
           <EntitySet Name="dayz_online" EntityType="BNetDbModel.Store.dayz_online" store:Type="Tables" Schema="dayzcp" />
           <EntitySet Name="dayz_server" EntityType="BNetDbModel.Store.dayz_server" store:Type="Tables" Schema="dayzcp" />
@@ -22,6 +22,7 @@
           <Property Name="lobby" Type="utinyint" Nullable="false" />
           <Property Name="ping" Type="int" Nullable="false" />
           <Property Name="verified" Type="tinyint" Nullable="false" />
+          <Property Name="last_updated" Type="datetime" Nullable="false" />
         </EntityType>
         <EntityType Name="dayz_server">
           <Key>
@@ -44,32 +45,17 @@
         <Function Name="dayz_clear_online" Aggregate="false" BuiltIn="false" NiladicFunction="false" IsComposable="false" ParameterTypeSemantics="AllowImplicitConversion" Schema="dayzcp">
           <Parameter Name="dayz_srv_id" Type="int" Mode="In" />
         </Function>
-      </Schema>
-    </edmx:StorageModels>
+      </Schema></edmx:StorageModels>
     <!-- CSDL content -->
     <edmx:ConceptualModels>
       <Schema Namespace="BNetDbModel" Alias="Self" p1:UseStrongSpatialTypes="false" xmlns:annotation="http://schemas.microsoft.com/ado/2009/02/edm/annotation" xmlns:p1="http://schemas.microsoft.com/ado/2009/02/edm/annotation" xmlns="http://schemas.microsoft.com/ado/2009/11/edm">
         <EntityContainer Name="BNetDb" p1:LazyLoadingEnabled="true">
-          <EntitySet Name="dayz_online" EntityType="BNetDbModel.dayz_online" />
           <EntitySet Name="dayz_server" EntityType="BNetDbModel.dayz_server" />
           <FunctionImport Name="dayz_clear_online">
-            <Parameter Name="dayz_srv_id" Mode="In" Type="Int32" />
+          <Parameter Name="dayz_srv_id" Mode="In" Type="Int32" />
           </FunctionImport>
+          <EntitySet Name="dayz_online" EntityType="BNetDbModel.dayz_online" />
         </EntityContainer>
-        <EntityType Name="dayz_online">
-          <Key>
-            <PropertyRef Name="dayz_server_id" />
-            <PropertyRef Name="slot" />
-          </Key>
-          <Property Name="dayz_server_id" Type="Int64" Nullable="false" />
-          <Property Name="slot" Type="Byte" Nullable="false" />
-          <Property Name="name" Type="String" Nullable="false" MaxLength="300" Unicode="false" FixedLength="false" />
-          <Property Name="ip_address" Type="String" Nullable="false" MaxLength="45" Unicode="false" FixedLength="false" />
-          <Property Name="guid" Type="String" Nullable="false" MaxLength="32" Unicode="false" FixedLength="false" />
-          <Property Name="lobby" Type="Byte" Nullable="false" />
-          <Property Name="ping" Type="Int32" Nullable="false" />
-          <Property Name="verified" Type="SByte" Nullable="false" />
-        </EntityType>
         <EntityType Name="dayz_server">
           <Key>
             <PropertyRef Name="id" />
@@ -88,26 +74,27 @@
           <Property Name="rcon_port" Type="Int32" Nullable="false" />
           <Property Name="rcon_pwd" Type="String" Nullable="false" MaxLength="50" Unicode="false" FixedLength="false" />
         </EntityType>
+        <EntityType Name="dayz_online">
+          <Key>
+            <PropertyRef Name="dayz_server_id" />
+            <PropertyRef Name="slot" />
+          </Key>
+          <Property Type="Int64" Name="dayz_server_id" Nullable="false" />
+          <Property Type="Byte" Name="slot" Nullable="false" />
+          <Property Type="String" Name="name" Nullable="false" MaxLength="300" FixedLength="false" Unicode="false" />
+          <Property Type="String" Name="ip_address" Nullable="false" MaxLength="45" FixedLength="false" Unicode="false" />
+          <Property Type="String" Name="guid" Nullable="false" MaxLength="32" FixedLength="false" Unicode="false" />
+          <Property Type="Byte" Name="lobby" Nullable="false" />
+          <Property Type="Int32" Name="ping" Nullable="false" />
+          <Property Type="SByte" Name="verified" Nullable="false" />
+          <Property Type="DateTime" Name="last_updated" Nullable="false" Precision="3" />
+        </EntityType>
       </Schema>
     </edmx:ConceptualModels>
     <!-- C-S mapping content -->
     <edmx:Mappings>
       <Mapping Space="C-S" xmlns="http://schemas.microsoft.com/ado/2009/11/mapping/cs">
         <EntityContainerMapping StorageEntityContainer="BNetDbModelStoreContainer" CdmEntityContainer="BNetDb">
-          <EntitySetMapping Name="dayz_online">
-            <EntityTypeMapping TypeName="BNetDbModel.dayz_online">
-              <MappingFragment StoreEntitySet="dayz_online">
-                <ScalarProperty Name="dayz_server_id" ColumnName="dayz_server_id" />
-                <ScalarProperty Name="slot" ColumnName="slot" />
-                <ScalarProperty Name="name" ColumnName="name" />
-                <ScalarProperty Name="ip_address" ColumnName="ip_address" />
-                <ScalarProperty Name="guid" ColumnName="guid" />
-                <ScalarProperty Name="lobby" ColumnName="lobby" />
-                <ScalarProperty Name="ping" ColumnName="ping" />
-                <ScalarProperty Name="verified" ColumnName="verified" />
-              </MappingFragment>
-            </EntityTypeMapping>
-          </EntitySetMapping>
           <EntitySetMapping Name="dayz_server">
             <EntityTypeMapping TypeName="BNetDbModel.dayz_server">
               <MappingFragment StoreEntitySet="dayz_server">
@@ -128,6 +115,21 @@
             </EntityTypeMapping>
           </EntitySetMapping>
           <FunctionImportMapping FunctionImportName="dayz_clear_online" FunctionName="BNetDbModel.Store.dayz_clear_online" />
+          <EntitySetMapping Name="dayz_online">
+            <EntityTypeMapping TypeName="BNetDbModel.dayz_online">
+              <MappingFragment StoreEntitySet="dayz_online">
+                <ScalarProperty Name="last_updated" ColumnName="last_updated" />
+                <ScalarProperty Name="verified" ColumnName="verified" />
+                <ScalarProperty Name="ping" ColumnName="ping" />
+                <ScalarProperty Name="lobby" ColumnName="lobby" />
+                <ScalarProperty Name="guid" ColumnName="guid" />
+                <ScalarProperty Name="ip_address" ColumnName="ip_address" />
+                <ScalarProperty Name="name" ColumnName="name" />
+                <ScalarProperty Name="slot" ColumnName="slot" />
+                <ScalarProperty Name="dayz_server_id" ColumnName="dayz_server_id" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
         </EntityContainerMapping>
       </Mapping>
     </edmx:Mappings>

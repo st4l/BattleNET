@@ -3,6 +3,7 @@
 // ----------------------------------------------------------------------------------------------------
 namespace BNet.AdvCommands
 {
+    using System;
     using System.Data.Entity;
     using BattleNET;
     using BNet.AdvCommands.misc;
@@ -55,7 +56,8 @@ namespace BNet.AdvCommands
                                 name = p.Name, 
                                 ping = p.Ping, 
                                 slot = (byte)p.Id, 
-                                verified = (sbyte)(p.Verified ? 1 : 0)
+                                verified = (sbyte)(p.Verified ? 1 : 0),
+                                last_updated = DateTime.Now
                             });
                 }
 

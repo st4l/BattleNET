@@ -164,8 +164,7 @@ namespace BNet
 
         private static bool ParseBatchFile(string batchFile, CommandExecutor executor)
         {
-            var parser = new FileIniDataParser();
-
+            var parser = new FileIniDataParser { CommentDelimiter = (char)0 };
             IniData data;
             try
             {
@@ -249,7 +248,7 @@ namespace BNet
             try
             {
                 string uriString = string.Format(
-                    "mysql://{0}:{1}@{2}:{3}/{4}", user, pwd, host, port, db);
+                    "mysql://{0}:{1}", host, port);
                 uri = new Uri(uriString);
             }
             catch (UriFormatException)
@@ -258,7 +257,9 @@ namespace BNet
             }
 
             if (uri == null || !uri.IsWellFormedOriginalString()
-                || string.IsNullOrWhiteSpace(uri.UserInfo))
+                || string.IsNullOrWhiteSpace(user)
+                || string.IsNullOrWhiteSpace(pwd)
+                || string.IsNullOrWhiteSpace(db))
             {
                 Console.WriteLine("Invalid MySql connection settings.");
                 return null;
@@ -267,7 +268,8 @@ namespace BNet
             string connString =
                 string.Format(
                     "metadata=res://*/Data.BNetDb.csdl|res://*/Data.BNetDb.ssdl|res://*/Data.BNetDb.msl;provider=MySql.Data.MySqlClient;"
-                    + "provider connection string=\"server={2};port={3};User Id={0};Password={1};persist security info=False;database={4}\"", 
+                    + "provider connection string=\"server='{2}';port={3};database='{4}';User Id='{0}';Password='{1}';"
+                    + "Persist Security Info=False;Allow Zero Datetime=True;Convert Zero Datetime=True;\"", 
                     user, 
                     pwd, 
                     host, 

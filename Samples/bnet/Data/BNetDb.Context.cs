@@ -18,8 +18,8 @@ namespace BNet.Data
     
     public partial class BNetDb : DbContext
     {
-        public BNetDb(string nameOrConnString)
-            : base(nameOrConnString)
+        public BNetDb(string connString)
+            : base(connString)
         {
         }
     
@@ -28,8 +28,8 @@ namespace BNet.Data
             throw new UnintentionalCodeFirstException();
         }
     
-        public DbSet<dayz_online> dayz_online { get; set; }
         public DbSet<dayz_server> dayz_server { get; set; }
+        public DbSet<dayz_online> dayz_online { get; set; }
     
         public virtual int dayz_clear_online(Nullable<int> dayz_srv_id)
         {

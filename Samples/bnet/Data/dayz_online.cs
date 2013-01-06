@@ -22,5 +22,6 @@ namespace BNet.Data
         public byte lobby { get; set; }
         public int ping { get; set; }
         public sbyte verified { get; set; }
+        public System.DateTime last_updated { get; set; }
     }
 }

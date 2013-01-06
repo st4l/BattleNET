@@ -46,7 +46,7 @@ namespace BNet.IoC
 
         public virtual bool ExecuteSingle()
         {
-            var beClient = new BattlEyeClient(Context.Server.LoginCredentials)
+            var beClient = new BattlEyeClient(this.Context.Server.LoginCredentials)
                                {
                                    ReconnectOnPacketLoss = true, 
                                    DiscardConsoleMessages = true

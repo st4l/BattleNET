@@ -1,3 +1,5 @@
+[Fetched from official release at: http://www.battleye.com/downloads/BERConProtocol.txt]
+
 BattlEye RCon Protocol Specification v2
 Copyright (C) 2011 by BattlEye Innovations
 ==========================================

@@ -1,23 +1,6 @@
 delimiter $$
 
-CREATE DATABASE `bnet` /*!40100 DEFAULT CHARACTER SET latin1 */$$
-USE `bnet` $$
-
-
-CREATE TABLE `dayz_online` (
-  `dayz_server_id` int(11) unsigned NOT NULL,
-  `slot` tinyint(3) unsigned NOT NULL,
-  `name` varchar(300) NOT NULL,
-  `ip_address` varchar(45) NOT NULL,
-  `guid` varchar(32) NOT NULL,
-  `lobby` tinyint(3) unsigned NOT NULL,
-  `ping` int(11) NOT NULL,
-  `verified` tinyint(4) NOT NULL,
-  PRIMARY KEY (`dayz_server_id`,`slot`),
-  UNIQUE KEY `name_UNIQUE` (`name`)
-) ENGINE=InnoDB DEFAULT CHARSET=latin1$$
-
-
+CREATE DATABASE `bnet` /*!40100 DEFAULT CHARACTER SET utf8 */$$
 
 CREATE TABLE `dayz_server` (
   `id` int(11) unsigned NOT NULL AUTO_INCREMENT,
@@ -36,15 +19,24 @@ CREATE TABLE `dayz_server` (
   PRIMARY KEY (`id`),
   UNIQUE KEY `id_UNIQUE` (`id`),
   KEY `dcvfs_idx` (`server_id`)
-) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=latin1$$
+) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8$$
 
 
-
-CREATE DEFINER=`root`@`localhost` PROCEDURE `dayz_clear_online`(in dayz_srv_id int)
-BEGIN
-
-	DELETE FROM dayz_online 
-    WHERE dayz_online.dayz_server_id = dayz_srv_id;
-
-END$$
+CREATE TABLE `dayz_online` (
+  `dayz_server_id` int(11) unsigned NOT NULL,
+  `slot` tinyint(3) unsigned NOT NULL,
+  `guid` varchar(32) NOT NULL,
+  `name` varchar(64) NOT NULL,
+  `ip_address` varchar(45) NOT NULL,
+  `lobby` tinyint(3) unsigned NOT NULL,
+  `ping` int(11) NOT NULL,
+  `verified` tinyint(4) NOT NULL,
+  `first_seen` datetime NOT NULL,
+  `last_seen` datetime NOT NULL,
+  `online` tinyint(4) NOT NULL,
+  PRIMARY KEY (`dayz_server_id`,`first_seen`,`guid`),
+  KEY `FK_dayzonline_dayzserver_idx` (`dayz_server_id`),
+  KEY `guid_online` (`online`,`guid`),
+  CONSTRAINT `FK_dayzonline_dayzserver` FOREIGN KEY (`dayz_server_id`) REFERENCES `dayz_server` (`id`) ON DELETE NO ACTION ON UPDATE NO ACTION
+) ENGINE=InnoDB DEFAULT CHARSET=utf8$$
 

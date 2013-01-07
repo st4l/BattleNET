@@ -54,7 +54,7 @@ namespace BNet.IoC
             if (connect != BattlEyeConnectionResult.Success)
             {
                 beClient.Disconnect();
-                throw new ApplicationException("ERROR: Could not connect to the server. " + connect);
+                throw new ApplicationException("ERROR: Could not connect to the server: " + connect);
             }
 
             this.Log.DebugFormat("Sending command: '{0}'", this.Metadata.Name);

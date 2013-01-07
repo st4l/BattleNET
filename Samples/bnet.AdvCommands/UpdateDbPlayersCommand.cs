@@ -5,6 +5,8 @@ namespace BNet.AdvCommands
 {
     using System;
     using System.Data.Entity;
+    using System.Linq;
+    using System.Transactions;
     using BattleNET;
     using BNet.AdvCommands.misc;
     using BNet.BaseCommands;
@@ -13,11 +15,19 @@ namespace BNet.AdvCommands
 
     public class UpdateDbPlayersCommand : GetPlayersCommand
     {
+        private static readonly object SyncRoot = new object();
+
+
         public override bool ExecAwaitResponse(BattlEyeClient beClient, int timeoutSecs = 10)
         {
             if (base.ExecAwaitResponse(beClient, timeoutSecs))
             {
-                this.UpdateDatabase();
+                // let's do the db access one at a time shall we?
+                lock (SyncRoot)
+                {
+                    this.UpdateDatabase();
+                }
+
                 return true;
             }
 
@@ -30,28 +40,55 @@ namespace BNet.AdvCommands
             using (var db = new BNetDb(this.Context.DbConnectionString))
             {
                 db.HookSaveChanges(this.LogSql);
-
-                db.dayz_clear_online(this.Context.Server.ServerId);
-
-                foreach (var p in this.Result)
+                int serverId = this.Context.Server.ServerId;
+                using (var scope = new TransactionScope(TransactionScopeOption.RequiresNew))
                 {
-                    db.dayz_online.Add(
-                        new dayz_online
-                            {
-                                dayz_server_id = this.Context.Server.ServerId, 
-                                guid = p.Guid, 
-                                ip_address = p.IpAddress, 
-                                lobby = (byte)(p.InLobby ? 1 : 0), 
-                                name = p.Name, 
-                                ping = p.Ping, 
-                                slot = (byte)p.Id, 
-                                verified = (sbyte)(p.Verified ? 1 : 0),
-                                last_updated = DateTime.Now
-                            });
-                }
+                    // db.dayz_clear_online(serverId);
+                    var now = DateTime.Now;
+                    var areOnlineGuids = this.Result.Select(r => r.Guid).ToList();
+                    var whereOnline = from o in db.dayz_online
+                                      where o.dayz_server_id == serverId && o.online == 1
+                                      select o;
 
-                db.SaveChanges();
-            }
+                    foreach (var wasOnlinePlayer in whereOnline)
+                    {
+                        if (areOnlineGuids.Contains(wasOnlinePlayer.guid))
+                        {
+                            // he's still online
+                            wasOnlinePlayer.last_seen = now;
+                            areOnlineGuids.Remove(wasOnlinePlayer.guid);
+                        }
+                        else
+                        {
+                            // he's gone
+                            wasOnlinePlayer.online = 0;
+                        }
+                    }
+
+                    var newOnline = this.Result.Where(r => areOnlineGuids.Contains(r.Guid));
+                    foreach (var p in newOnline)
+                    {
+                        db.dayz_online.Add(
+                            new dayz_online
+                                {
+                                    dayz_server_id = this.Context.Server.ServerId, 
+                                    guid = p.Guid, 
+                                    ip_address = p.IpAddress, 
+                                    lobby = (byte)(p.InLobby ? 1 : 0), 
+                                    name = p.Name, 
+                                    ping = p.Ping, 
+                                    slot = (byte)p.Id, 
+                                    verified = (sbyte)(p.Verified ? 1 : 0), 
+                                    first_seen = now, 
+                                    last_seen = now,
+                                    online = 1
+                                });
+                    }
+
+                    db.SaveChanges();
+                    scope.Complete();
+                } // ~trans()
+            } // ~db()
         }
 
 

@@ -15,8 +15,11 @@ namespace BNet
     using BNet.IoC;
     using BNet.IoC.Log4Net;
     using IniParser;
+    using log4net;
     using log4net.Config;
+    using log4net.Core;
     using Plossum.CommandLine;
+    using log4netRepoHierarchy = log4net.Repository.Hierarchy;
 
 
     internal static class Program
@@ -42,6 +45,13 @@ namespace BNet
             var app = Container.Resolve<CommandExecutor>();
             app.Container = Container;
             var options = GetAppArguments(app);
+
+            if (options.Verbose)
+            {
+                var loggingRepo = (log4netRepoHierarchy.Hierarchy)LogManager.GetRepository();
+                loggingRepo.Root.Level = Level.Debug;
+                loggingRepo.RaiseConfigurationChanged(EventArgs.Empty);
+            }
 
             // No errors present and all arguments correct 
             // Do work according to arguments   
@@ -267,6 +277,7 @@ namespace BNet
                 string.Format(
                     "metadata=res://*/Data.BNetDb.csdl|res://*/Data.BNetDb.ssdl|res://*/Data.BNetDb.msl;provider=MySql.Data.MySqlClient;"
                     + "provider connection string=\"server='{2}';port={3};database='{4}';User Id='{0}';Password='{1}';"
+                    + "Check Parameters=false;"
                     + "Persist Security Info=False;Allow Zero Datetime=True;Convert Zero Datetime=True;\"", 
                     user, 
                     pwd, 
@@ -370,7 +381,9 @@ namespace BNet
             IEnumerable<ServerInfo> servers;
             using (var db = new BNetDb(connString))
             {
-                var dayzServers = from s in db.dayz_server select s;
+                var dayzServers = from s in db.dayz_server 
+                                  where s.server_id == 1
+                                  select s;
 
                 servers =
                     dayzServers.ToList()

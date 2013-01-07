@@ -12,9 +12,6 @@ namespace BNet.Data
     using System;
     using System.Data.Entity;
     using System.Data.Entity.Infrastructure;
-    using System.Data.Objects;
-    using System.Data.Objects.DataClasses;
-    using System.Linq;
     
     public partial class BNetDb : DbContext
     {
@@ -28,16 +25,7 @@ namespace BNet.Data
             throw new UnintentionalCodeFirstException();
         }
     
-        public DbSet<dayz_server> dayz_server { get; set; }
         public DbSet<dayz_online> dayz_online { get; set; }
-    
-        public virtual int dayz_clear_online(Nullable<int> dayz_srv_id)
-        {
-            var dayz_srv_idParameter = dayz_srv_id.HasValue ?
-                new ObjectParameter("dayz_srv_id", dayz_srv_id) :
-                new ObjectParameter("dayz_srv_id", typeof(int));
-    
-            return ((IObjectContextAdapter)this).ObjectContext.ExecuteFunction("dayz_clear_online", dayz_srv_idParameter);
-        }
+        public DbSet<dayz_server> dayz_server { get; set; }
     }
 }

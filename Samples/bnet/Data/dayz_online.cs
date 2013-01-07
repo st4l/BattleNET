@@ -16,12 +16,14 @@ namespace BNet.Data
     {
         public long dayz_server_id { get; set; }
         public byte slot { get; set; }
+        public string guid { get; set; }
         public string name { get; set; }
         public string ip_address { get; set; }
-        public string guid { get; set; }
         public byte lobby { get; set; }
         public int ping { get; set; }
         public sbyte verified { get; set; }
-        public System.DateTime last_updated { get; set; }
+        public System.DateTime first_seen { get; set; }
+        public System.DateTime last_seen { get; set; }
+        public sbyte online { get; set; }
     }
 }

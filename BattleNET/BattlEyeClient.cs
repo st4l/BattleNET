@@ -352,9 +352,9 @@ namespace BattleNET
             {
                 if (callbackIds == null)
                 {
-                    callbackIds = from kv in cmdCallbacks
+                    callbackIds = (from kv in this.cmdCallbacks
                                   where DateTime.Now > kv.Value.Expires
-                                  select kv.Key;
+                                  select kv.Key).ToArray();
                 }
 
                 foreach (var callbackId in callbackIds)

@@ -12,17 +12,20 @@
         <EntityType Name="dayz_online">
           <Key>
             <PropertyRef Name="dayz_server_id" />
-            <PropertyRef Name="slot" />
+            <PropertyRef Name="guid" />
+            <PropertyRef Name="first_seen" />
           </Key>
           <Property Name="dayz_server_id" Type="uint" Nullable="false" />
           <Property Name="slot" Type="utinyint" Nullable="false" />
-          <Property Name="name" Type="varchar" Nullable="false" MaxLength="300" />
-          <Property Name="ip_address" Type="varchar" Nullable="false" MaxLength="45" />
           <Property Name="guid" Type="varchar" Nullable="false" MaxLength="32" />
+          <Property Name="name" Type="varchar" Nullable="false" MaxLength="64" />
+          <Property Name="ip_address" Type="varchar" Nullable="false" MaxLength="45" />
           <Property Name="lobby" Type="utinyint" Nullable="false" />
           <Property Name="ping" Type="int" Nullable="false" />
           <Property Name="verified" Type="tinyint" Nullable="false" />
-          <Property Name="last_updated" Type="datetime" Nullable="false" />
+          <Property Name="first_seen" Type="datetime" Nullable="false" />
+          <Property Name="last_seen" Type="datetime" Nullable="false" />
+          <Property Name="online" Type="tinyint" Nullable="false" />
         </EntityType>
         <EntityType Name="dayz_server">
           <Key>
@@ -42,52 +45,49 @@
           <Property Name="rcon_port" Type="int" Nullable="false" />
           <Property Name="rcon_pwd" Type="varchar" Nullable="false" MaxLength="50" />
         </EntityType>
-        <Function Name="dayz_clear_online" Aggregate="false" BuiltIn="false" NiladicFunction="false" IsComposable="false" ParameterTypeSemantics="AllowImplicitConversion" Schema="dayzcp">
-          <Parameter Name="dayz_srv_id" Type="int" Mode="In" />
-        </Function>
       </Schema></edmx:StorageModels>
     <!-- CSDL content -->
     <edmx:ConceptualModels>
       <Schema Namespace="BNetDbModel" Alias="Self" p1:UseStrongSpatialTypes="false" xmlns:annotation="http://schemas.microsoft.com/ado/2009/02/edm/annotation" xmlns:p1="http://schemas.microsoft.com/ado/2009/02/edm/annotation" xmlns="http://schemas.microsoft.com/ado/2009/11/edm">
         <EntityContainer Name="BNetDb" p1:LazyLoadingEnabled="true">
-          <EntitySet Name="dayz_server" EntityType="BNetDbModel.dayz_server" />
-          <FunctionImport Name="dayz_clear_online">
-          <Parameter Name="dayz_srv_id" Mode="In" Type="Int32" />
-          </FunctionImport>
           <EntitySet Name="dayz_online" EntityType="BNetDbModel.dayz_online" />
+          <EntitySet Name="dayz_server" EntityType="BNetDbModel.dayz_server" />
         </EntityContainer>
+        <EntityType Name="dayz_online">
+          <Key>
+            <PropertyRef Name="dayz_server_id" />
+            <PropertyRef Name="guid" />
+            <PropertyRef Name="first_seen" />
+          </Key>
+          <Property Type="Int64" Name="dayz_server_id" Nullable="false" />
+          <Property Type="Byte" Name="slot" Nullable="false" />
+          <Property Type="String" Name="guid" Nullable="false" MaxLength="32" FixedLength="false" Unicode="false" />
+          <Property Type="String" Name="name" Nullable="false" MaxLength="64" FixedLength="false" Unicode="false" />
+          <Property Type="String" Name="ip_address" Nullable="false" MaxLength="45" FixedLength="false" Unicode="false" />
+          <Property Type="Byte" Name="lobby" Nullable="false" />
+          <Property Type="Int32" Name="ping" Nullable="false" />
+          <Property Type="SByte" Name="verified" Nullable="false" />
+          <Property Type="DateTime" Name="first_seen" Nullable="false" />
+          <Property Type="DateTime" Name="last_seen" Nullable="false" />
+          <Property Type="SByte" Name="online" Nullable="false" />
+        </EntityType>
         <EntityType Name="dayz_server">
           <Key>
             <PropertyRef Name="id" />
           </Key>
-          <Property Name="id" Type="Int64" Nullable="false" p1:StoreGeneratedPattern="Identity" />
-          <Property Name="server_id" Type="Int64" Nullable="false" />
-          <Property Name="short_name" Type="String" Nullable="false" MaxLength="16" Unicode="false" FixedLength="false" />
-          <Property Name="name" Type="String" Nullable="false" MaxLength="400" Unicode="false" FixedLength="false" />
-          <Property Name="db_type" Type="Int64" Nullable="false" />
-          <Property Name="db_host" Type="String" Nullable="false" MaxLength="50" Unicode="false" FixedLength="false" />
-          <Property Name="db_port" Type="Int32" Nullable="false" />
-          <Property Name="db_dbname" Type="String" Nullable="false" MaxLength="50" Unicode="false" FixedLength="false" />
-          <Property Name="db_user" Type="String" Nullable="false" MaxLength="50" Unicode="false" FixedLength="false" />
-          <Property Name="db_password" Type="String" Nullable="false" MaxLength="50" Unicode="false" FixedLength="false" />
-          <Property Name="rcon_host" Type="String" Nullable="false" MaxLength="50" Unicode="false" FixedLength="false" />
-          <Property Name="rcon_port" Type="Int32" Nullable="false" />
-          <Property Name="rcon_pwd" Type="String" Nullable="false" MaxLength="50" Unicode="false" FixedLength="false" />
-        </EntityType>
-        <EntityType Name="dayz_online">
-          <Key>
-            <PropertyRef Name="dayz_server_id" />
-            <PropertyRef Name="slot" />
-          </Key>
-          <Property Type="Int64" Name="dayz_server_id" Nullable="false" />
-          <Property Type="Byte" Name="slot" Nullable="false" />
-          <Property Type="String" Name="name" Nullable="false" MaxLength="300" FixedLength="false" Unicode="false" />
-          <Property Type="String" Name="ip_address" Nullable="false" MaxLength="45" FixedLength="false" Unicode="false" />
-          <Property Type="String" Name="guid" Nullable="false" MaxLength="32" FixedLength="false" Unicode="false" />
-          <Property Type="Byte" Name="lobby" Nullable="false" />
-          <Property Type="Int32" Name="ping" Nullable="false" />
-          <Property Type="SByte" Name="verified" Nullable="false" />
-          <Property Type="DateTime" Name="last_updated" Nullable="false" Precision="3" />
+          <Property Type="Int64" Name="id" Nullable="false" annotation:StoreGeneratedPattern="Identity" />
+          <Property Type="Int64" Name="server_id" Nullable="false" />
+          <Property Type="String" Name="short_name" Nullable="false" MaxLength="16" FixedLength="false" Unicode="false" />
+          <Property Type="String" Name="name" Nullable="false" MaxLength="400" FixedLength="false" Unicode="false" />
+          <Property Type="Int64" Name="db_type" Nullable="false" />
+          <Property Type="String" Name="db_host" Nullable="false" MaxLength="50" FixedLength="false" Unicode="false" />
+          <Property Type="Int32" Name="db_port" Nullable="false" />
+          <Property Type="String" Name="db_dbname" Nullable="false" MaxLength="50" FixedLength="false" Unicode="false" />
+          <Property Type="String" Name="db_user" Nullable="false" MaxLength="50" FixedLength="false" Unicode="false" />
+          <Property Type="String" Name="db_password" Nullable="false" MaxLength="50" FixedLength="false" Unicode="false" />
+          <Property Type="String" Name="rcon_host" Nullable="false" MaxLength="50" FixedLength="false" Unicode="false" />
+          <Property Type="Int32" Name="rcon_port" Nullable="false" />
+          <Property Type="String" Name="rcon_pwd" Nullable="false" MaxLength="50" FixedLength="false" Unicode="false" />
         </EntityType>
       </Schema>
     </edmx:ConceptualModels>
@@ -95,38 +95,39 @@
     <edmx:Mappings>
       <Mapping Space="C-S" xmlns="http://schemas.microsoft.com/ado/2009/11/mapping/cs">
         <EntityContainerMapping StorageEntityContainer="BNetDbModelStoreContainer" CdmEntityContainer="BNetDb">
-          <EntitySetMapping Name="dayz_server">
-            <EntityTypeMapping TypeName="BNetDbModel.dayz_server">
-              <MappingFragment StoreEntitySet="dayz_server">
-                <ScalarProperty Name="id" ColumnName="id" />
-                <ScalarProperty Name="server_id" ColumnName="server_id" />
-                <ScalarProperty Name="short_name" ColumnName="short_name" />
-                <ScalarProperty Name="name" ColumnName="name" />
-                <ScalarProperty Name="db_type" ColumnName="db_type" />
-                <ScalarProperty Name="db_host" ColumnName="db_host" />
-                <ScalarProperty Name="db_port" ColumnName="db_port" />
-                <ScalarProperty Name="db_dbname" ColumnName="db_dbname" />
-                <ScalarProperty Name="db_user" ColumnName="db_user" />
-                <ScalarProperty Name="db_password" ColumnName="db_password" />
-                <ScalarProperty Name="rcon_host" ColumnName="rcon_host" />
-                <ScalarProperty Name="rcon_port" ColumnName="rcon_port" />
-                <ScalarProperty Name="rcon_pwd" ColumnName="rcon_pwd" />
-              </MappingFragment>
-            </EntityTypeMapping>
-          </EntitySetMapping>
-          <FunctionImportMapping FunctionImportName="dayz_clear_online" FunctionName="BNetDbModel.Store.dayz_clear_online" />
           <EntitySetMapping Name="dayz_online">
             <EntityTypeMapping TypeName="BNetDbModel.dayz_online">
               <MappingFragment StoreEntitySet="dayz_online">
-                <ScalarProperty Name="last_updated" ColumnName="last_updated" />
+                <ScalarProperty Name="online" ColumnName="online" />
+                <ScalarProperty Name="last_seen" ColumnName="last_seen" />
+                <ScalarProperty Name="first_seen" ColumnName="first_seen" />
                 <ScalarProperty Name="verified" ColumnName="verified" />
                 <ScalarProperty Name="ping" ColumnName="ping" />
                 <ScalarProperty Name="lobby" ColumnName="lobby" />
-                <ScalarProperty Name="guid" ColumnName="guid" />
                 <ScalarProperty Name="ip_address" ColumnName="ip_address" />
                 <ScalarProperty Name="name" ColumnName="name" />
+                <ScalarProperty Name="guid" ColumnName="guid" />
                 <ScalarProperty Name="slot" ColumnName="slot" />
                 <ScalarProperty Name="dayz_server_id" ColumnName="dayz_server_id" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="dayz_server">
+            <EntityTypeMapping TypeName="BNetDbModel.dayz_server">
+              <MappingFragment StoreEntitySet="dayz_server">
+                <ScalarProperty Name="rcon_pwd" ColumnName="rcon_pwd" />
+                <ScalarProperty Name="rcon_port" ColumnName="rcon_port" />
+                <ScalarProperty Name="rcon_host" ColumnName="rcon_host" />
+                <ScalarProperty Name="db_password" ColumnName="db_password" />
+                <ScalarProperty Name="db_user" ColumnName="db_user" />
+                <ScalarProperty Name="db_dbname" ColumnName="db_dbname" />
+                <ScalarProperty Name="db_port" ColumnName="db_port" />
+                <ScalarProperty Name="db_host" ColumnName="db_host" />
+                <ScalarProperty Name="db_type" ColumnName="db_type" />
+                <ScalarProperty Name="name" ColumnName="name" />
+                <ScalarProperty Name="short_name" ColumnName="short_name" />
+                <ScalarProperty Name="server_id" ColumnName="server_id" />
+                <ScalarProperty Name="id" ColumnName="id" />
               </MappingFragment>
             </EntityTypeMapping>
           </EntitySetMapping>

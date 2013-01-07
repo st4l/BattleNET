@@ -11,8 +11,8 @@ namespace BNet
     using System.Text;
     using Autofac;
     using BattleNET;
-    using BNet.Data;
     using BNet.IoC;
+    using BNet.IoC.Data;
     using BNet.IoC.Log4Net;
     using IniParser;
     using log4net;
@@ -31,7 +31,8 @@ namespace BNet
         {
             Console.OutputEncoding = Encoding.UTF8;
             Console.Title = "bnet - " + Environment.MachineName;
-
+            
+            Console.WriteLine("bnet is starting...");
 #if DEBUG
 
             // Give me a chance to attach the debugger... (launching from .bat)
@@ -58,6 +59,7 @@ namespace BNet
             if (options.AsService > 0)
             {
                 app.StartService(options.AsService);
+
                 while (true)
                 {
                     Console.ReadKey(true);

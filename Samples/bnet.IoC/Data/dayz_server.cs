@@ -7,7 +7,7 @@
 // </auto-generated>
 //------------------------------------------------------------------------------
 
-namespace BNet.Data
+namespace BNet.IoC.Data
 {
     using System;
     using System.Collections.Generic;

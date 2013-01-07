@@ -10,7 +10,8 @@ namespace BNet.AdvCommands
     using BattleNET;
     using BNet.AdvCommands.misc;
     using BNet.BaseCommands;
-    using BNet.Data;
+    using BNet.IoC.Data;
+    
 
 
     public class UpdateDbPlayersCommand : GetPlayersCommand

@@ -60,8 +60,11 @@ namespace BNet.IoC
         {
             this.runningTimers = new List<Timer>();
 
-            int start = 1000;
+
+            int start = 0;
             period *= 1000;
+            var interleave = (int)Math.Floor((decimal)(period / this.Servers.Count() / this.Commands.Count()));
+            interleave = Math.Max(1000, interleave);
             foreach (var serverInfo in this.Servers)
             {
                 foreach (string command in this.Commands)
@@ -74,7 +77,7 @@ namespace BNet.IoC
                                               this.DbConnectionString
                                       };
                     var timer = new Timer(this.ExecuteTimedCommand, context, start, period);
-                    start += 1000;
+                    start += interleave;
                     this.runningTimers.Add(timer);
                 }
             }

@@ -11,7 +11,6 @@ namespace BNet.IoC
     using System.Threading;
     using Autofac;
     using BattleNET;
-    using BNet.IoC;
     using log4net;
 
 
@@ -35,8 +34,10 @@ namespace BNet.IoC
 
         public IContainer Container { get; set; }
 
-        private ILog Log { get; set; }
+        // ReSharper disable MemberCanBePrivate.Global
+        public ILog Log { get; set; }
 
+        // ReSharper restore MemberCanBePrivate.Global
         private Dictionary<string, RConCommandMetadata> BNetCommandsMetadata { get; set; }
 
 
@@ -144,11 +145,13 @@ namespace BNet.IoC
         private void ExecCustomCmd(CommandExecContext commandCtx)
         {
             string command = commandCtx.CommandString;
-            var beClient = new BattlEyeClient(commandCtx.Server.LoginCredentials);
+            var beClient = new BattlEyeClient(commandCtx.Server.LoginCredentials)
+                               {
+                                   ReconnectOnPacketLoss = true, 
+                                   DiscardConsoleMessages = true
+                               };
 
-            // beClient.MessageReceived += OutputMessage;
             beClient.DisconnectEvent += this.Disconnected;
-            beClient.ReconnectOnPacketLoss = true;
             beClient.Connect();
 
             this.Log.Info("> " + command);

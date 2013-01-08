@@ -32,6 +32,8 @@
     <WarningLevel>4</WarningLevel>
     <GenerateSerializationAssemblies>Off</GenerateSerializationAssemblies>
   </PropertyGroup>
+  
+  
   <ItemGroup>
     <Reference Include="Autofac">
       <HintPath>..\packages\Autofac.2.6.3.862\lib\NET40\Autofac.dll</HintPath>
@@ -81,10 +83,6 @@
     <ProjectReference Include="..\bnet.IoC\bnet.IoC.csproj">
       <Project>{3C948B25-A0E8-4231-9A48-37C371D5BF5C}</Project>
       <Name>bnet.IoC</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\bnet\bnet.csproj">
-      <Project>{21394EAE-1D50-45BB-A196-37966E69AA73}</Project>
-      <Name>bnet %28bnet\bnet%29</Name>
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>

@@ -10,8 +10,9 @@ namespace BNet.AdvCommands
     using BattleNET;
     using BNet.AdvCommands.misc;
     using BNet.BaseCommands;
+    using BNet.IoC;
     using BNet.IoC.Data;
-    
+    using BNet.IoC.Log4Net;
 
 
     public class UpdateDbPlayersCommand : GetPlayersCommand
@@ -26,7 +27,14 @@ namespace BNet.AdvCommands
                 // let's do the db access one at a time shall we?
                 lock (SyncRoot)
                 {
-                    this.UpdateDatabase();
+                    try
+                    {
+                        this.UpdateDatabase();
+                    }
+                    catch (Exception e)
+                    {
+                        throw new RConException("ERROR: Could not update database.", e);
+                    }
                 }
 
                 return true;
@@ -81,15 +89,19 @@ namespace BNet.AdvCommands
                                     slot = (byte)p.Id, 
                                     verified = (sbyte)(p.Verified ? 1 : 0), 
                                     first_seen = now, 
-                                    last_seen = now,
+                                    last_seen = now, 
                                     online = 1
                                 });
                     }
 
                     db.SaveChanges();
                     scope.Complete();
-                } // ~trans()
-            } // ~db()
+                }
+
+                // ~trans()
+            }
+
+            // ~db()
         }
 
 
@@ -97,7 +109,7 @@ namespace BNet.AdvCommands
         {
             // http://www.codeproject.com/Articles/499902/Profiling-Entity-Framework-5-in-code
             // call HookSaveChanges extension method
-            this.Log.Debug(command);
+            this.Log.Trace(command);
         }
     }
 }

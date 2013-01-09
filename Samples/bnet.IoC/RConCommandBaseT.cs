@@ -26,7 +26,7 @@ namespace BNet.IoC
 
             if (this.RawResponse == null)
             {
-                throw new TimeoutException("ERROR: Timeout while waiting for command response.");
+                throw new RConException("ERROR: Timeout while waiting for command '" + this.RConCommandText + "' response.");
             }
 
             try
@@ -35,7 +35,7 @@ namespace BNet.IoC
             }
             catch (Exception e)
             {
-                throw new ApplicationException(
+                throw new RConException(
                     "ERROR: Could not parse response: \r\n" + this.RawResponse, e);
             }
 
@@ -57,7 +57,7 @@ namespace BNet.IoC
             if (connect != BattlEyeConnectionResult.Success)
             {
                 beClient.Disconnect();
-                throw new ApplicationException("ERROR: Could not connect to the server: " + connect);
+                throw new RConException("ERROR: Could not connect to the server: " + connect);
             }
 
             this.Log.DebugFormat("Sending command: '{0}'", this.Metadata.Name);

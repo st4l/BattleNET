@@ -86,12 +86,14 @@
     </Compile>
     <Compile Include="IRconCommand.cs" />
     <Compile Include="IRconCommandT.cs" />
+    <Compile Include="Log4Net\Extensions.cs" />
     <Compile Include="Log4Net\Log4NetModule.cs" />
     <Compile Include="Log4Net\LogModule.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="RConCommandBase.cs" />
     <Compile Include="RConCommandBaseT.cs" />
     <Compile Include="RConCommandMetadata.cs" />
+    <Compile Include="RConException.cs" />
     <Compile Include="ServerInfo.cs" />
   </ItemGroup>
   <ItemGroup>

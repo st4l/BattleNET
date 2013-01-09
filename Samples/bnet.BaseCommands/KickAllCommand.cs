@@ -31,7 +31,7 @@ namespace BNet.BaseCommands
                 string cmd = string.Format(
                     CultureInfo.InvariantCulture, "Kick {0} {1}", i, this.KickReason);
                 this.Log.InfoFormat("Sending command: '{0}'", cmd);
-                this.Log.Info(beClient.SendCommandPacket(cmd).ToString());
+                this.SendCommandPacket(beClient, cmd);
             }
 
             while (beClient.CommandQueue > 0)

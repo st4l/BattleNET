@@ -12,14 +12,10 @@ namespace BNet
     using Autofac;
     using BattleNET;
     using BNet.IoC;
-    using BNet.IoC.Data;
     using BNet.IoC.Log4Net;
     using IniParser;
-    using log4net;
     using log4net.Config;
-    using log4net.Core;
     using Plossum.CommandLine;
-    using log4netRepoHierarchy = log4net.Repository.Hierarchy;
 
 
     internal static class Program
@@ -45,28 +41,46 @@ namespace BNet
 
             var app = Container.Resolve<CommandExecutor>();
             app.Container = Container;
-            var options = GetAppArguments(app);
 
-            if (options.Verbose)
+            Args options;
+            try
             {
-                var loggingRepo = (log4netRepoHierarchy.Hierarchy)LogManager.GetRepository();
-                loggingRepo.Root.Level = Level.Debug;
-                loggingRepo.RaiseConfigurationChanged(EventArgs.Empty);
+                options = GetAppArguments(app);
             }
+            catch (Exception e)
+            {
+                app.Log.Error("Could not parse arguments.", e);
+                throw;
+            }
+
 
             // No errors present and all arguments correct 
             // Do work according to arguments   
             if (options.AsService > 0)
             {
-                app.StartService(options.AsService);
-
-                while (true)
+                try
                 {
-                    Console.ReadKey(true);
+                    app.StartService(options.AsService);
+                    while (true)
+                    {
+                        Console.ReadKey(true);
+                    }
+                }
+                catch (Exception e)
+                {
+                    app.Log.Error("Error running as a service.", e);
                 }
             }
 
-            app.ExecuteCommands();
+            try
+            {
+                app.ExecuteCommands();
+            }
+            catch (Exception e)
+            {
+                app.Log.Error("Error executing command.", e);
+            }
+
             Environment.Exit(0);
         }
 
@@ -116,15 +130,9 @@ namespace BNet
 
             if (options.Help)
             {
-                Console.WriteLine(parser.UsageInfo.ToString(78, false));
-                Console.WriteLine(executor.GetCommandsHelp());
-                Console.WriteLine();
-                Console.WriteLine("Press any key to exit...");
-                Console.ReadKey();
-                Environment.Exit(0);
-            }
-
-            if (parser.HasErrors)
+                Exit(executor, parser, 0);
+            } 
+            else if (parser.HasErrors)
             {
                 Exit(executor, parser, 1);
             }
@@ -158,18 +166,36 @@ namespace BNet
         }
 
 
+        private static string GetCommandsHelp(CommandExecutor executor)
+        {
+            var sb = new StringBuilder();
+            sb.AppendLine("Available extra commands:");
+
+            foreach (var command in executor.BNetCommandsMetadata)
+            {
+                sb.AppendFormat("{0} - {1}", command.Key, command.Value.Description);
+                sb.AppendLine();
+            }
+
+            return sb.ToString();
+        }
+
+
         private static void Exit(CommandExecutor executor, CommandLineParser parser, int errorLevel)
         {
-            Console.WriteLine();
-            Console.WriteLine();
-            Console.WriteLine(parser.UsageInfo.ToString(78, true));
-            Console.WriteLine(executor.GetCommandsHelp());
-            Console.WriteLine();
-            Console.WriteLine("Examples: bnet -b SampleBatch.bnet -svc 60");
-            Console.WriteLine(
+            var sb = new StringBuilder();
+            sb.AppendLine();
+            sb.AppendLine();
+            sb.AppendLine(parser.UsageInfo.ToString(78, true));
+            sb.AppendLine(GetCommandsHelp(executor));
+            sb.AppendLine();
+            sb.AppendLine("Examples: bnet -b SampleBatch.bnet -svc 60");
+            sb.AppendLine(
                 "          bnet -u rconpass@127.0.0.1:2302 -u rconpass@127.0.0.1:3302 -svc 60 -c getplayers -c update_dbplayers");
-            Console.WriteLine();
-            Console.WriteLine("Press any key to exit...");
+            sb.AppendLine();
+            sb.AppendLine("Press any key to exit...");
+            
+            Console.Write(sb);
             Console.ReadKey();
             Environment.Exit(errorLevel);
         }
@@ -206,7 +232,7 @@ namespace BNet
                     return false;
                 }
 
-                executor.Servers = GetDbServers(executor.DbConnectionString);
+                executor.Servers = executor.GetDbServers();
             }
             else
             {
@@ -245,48 +271,12 @@ namespace BNet
                 return null;
             }
 
-            return ConstructBNetConnectionString(
+            return CommandExecutor.ConstructBNetConnectionString(
                 data["Database"]["Username"], 
                 data["Database"]["Password"], 
                 data["Database"]["Host"], 
                 data["Database"]["Port"], 
                 data["Database"]["Database"]);
-        }
-
-
-        private static string ConstructBNetConnectionString(
-            string user, string pwd, string host, string port, string db)
-        {
-            Uri uri;
-            try
-            {
-                string uriString = string.Format("mysql://{0}:{1}", host, port);
-                uri = new Uri(uriString);
-            }
-            catch (UriFormatException)
-            {
-                uri = null;
-            }
-
-            if (uri == null || !uri.IsWellFormedOriginalString() || string.IsNullOrWhiteSpace(user)
-                || string.IsNullOrWhiteSpace(pwd) || string.IsNullOrWhiteSpace(db))
-            {
-                Console.WriteLine("Invalid MySql connection settings.");
-                return null;
-            }
-
-            string connString =
-                string.Format(
-                    "metadata=res://*/Data.BNetDb.csdl|res://*/Data.BNetDb.ssdl|res://*/Data.BNetDb.msl;provider=MySql.Data.MySqlClient;"
-                    + "provider connection string=\"server='{2}';port={3};database='{4}';User Id='{0}';Password='{1}';"
-                    + "Check Parameters=false;"
-                    + "Persist Security Info=False;Allow Zero Datetime=True;Convert Zero Datetime=True;\"", 
-                    user, 
-                    pwd, 
-                    host, 
-                    port, 
-                    db);
-            return connString;
         }
 
 
@@ -375,33 +365,6 @@ namespace BNet
             }
 
             return null;
-        }
-
-
-        private static IEnumerable<ServerInfo> GetDbServers(string connString)
-        {
-            IEnumerable<ServerInfo> servers;
-            using (var db = new BNetDb(connString))
-            {
-                var dayzServers = from s in db.dayz_server 
-                                  where s.server_id == 1
-                                  select s;
-
-                servers =
-                    dayzServers.ToList()
-                               .Select(
-                                   s =>
-                                   new ServerInfo
-                                       {
-                                           ServerId = (int)s.id, 
-                                           ServerName = s.short_name, 
-                                           LoginCredentials =
-                                               new BattlEyeLoginCredentials(
-                                               s.rcon_host, s.rcon_port, s.rcon_pwd)
-                                       });
-            }
-
-            return servers;
         }
     }
 }

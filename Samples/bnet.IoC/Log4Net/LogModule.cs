@@ -1,4 +1,7 @@
-﻿namespace BNet.IoC.Log4Net
+﻿// ----------------------------------------------------------------------------------------------------
+// <copyright file="LogModule.cs" company="Me">Copyright (c) 2012 St4l.</copyright>
+// ----------------------------------------------------------------------------------------------------
+namespace BNet.IoC.Log4Net
 {
     using System;
     using System.Linq;
@@ -8,8 +11,6 @@
 
     public abstract class LogModule<TLogger> : Module
     {
-        #region Methods
-
         protected override void AttachToComponentRegistration(
             IComponentRegistry componentRegistry, IComponentRegistration registration)
         {
@@ -70,7 +71,5 @@
                 type.GetProperties().First(x => x.CanWrite && x.PropertyType == typeof(TLogger));
             propertyInfo.SetValue(@event.Instance, this.CreateLoggerFor(type), null);
         }
-
-        #endregion
     }
 }

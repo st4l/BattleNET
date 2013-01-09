@@ -25,14 +25,14 @@ namespace BNet.IoC
         {
             this.RawResponse = null;
 
+            this.Log.DebugFormat("Sending command: '{0}'", this.Metadata.Name);
             BattlEyeCommandResult result = beClient.SendCommandPacket(
                 this.RConCommandText, 
                 handler: (o, args) => this.RawResponse = args.Message, 
                 timeOutInSecs: timeoutSecs);
-
             if (result != BattlEyeCommandResult.Success)
             {
-                throw new ApplicationException("Could not send command: " + result);
+                throw new RConException("Error sending command '" + this.RConCommandText + "': " + result);
             }
 
             while (beClient.CommandQueue > 0)
@@ -54,15 +54,30 @@ namespace BNet.IoC
             if (connect != BattlEyeConnectionResult.Success)
             {
                 beClient.Disconnect();
-                throw new ApplicationException("ERROR: Could not connect to the server: " + connect);
+                throw new RConException("ERROR: Could not connect to the server: " + connect);
             }
 
-            this.Log.DebugFormat("Sending command: '{0}'", this.Metadata.Name);
             this.Execute(beClient);
             beClient.Disconnect();
             return true;
 
             // ~beClient()
         }
+
+
+        protected BattlEyeCommandResult SendCommandPacket(BattlEyeClient beClient, string commandText)
+        {
+            var result = beClient.SendCommandPacket(commandText);
+            this.Log.Info(result);
+
+            if (result != BattlEyeCommandResult.Success)
+            {
+                throw new RConException(
+                    "ERROR: There was an error sending command '" + commandText + "': " + result);
+            }
+
+            return result;
+        }
+
     }
 }

@@ -7,6 +7,7 @@ namespace BNet.IoC
     using log4net;
 
 
+
     public abstract class RConCommandBase : IRConCommand
     {
         public RConCommandMetadata Metadata { get; set; }

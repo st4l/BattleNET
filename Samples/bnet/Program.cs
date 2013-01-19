@@ -32,8 +32,8 @@ namespace BNet
 #if DEBUG
 
             // Give me a chance to attach the debugger... (launching from .bat)
-            Console.WriteLine("Press Enter to begin...");
-            Console.ReadLine();
+            // Console.WriteLine("Press Enter to begin...");
+            // Console.ReadLine();
 #endif
 
             XmlConfigurator.ConfigureAndWatch(new FileInfo("log4net.config"));
@@ -137,6 +137,10 @@ namespace BNet
                 Exit(executor, parser, 1);
             }
 
+#if DEBUG
+            options.BatchFile = "debug.bnet";
+            options.AsService = 30;
+#endif
             // batch file or command-line?
             if (options.BatchFile != null)
             {

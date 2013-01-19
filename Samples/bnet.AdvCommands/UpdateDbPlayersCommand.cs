@@ -53,7 +53,7 @@ namespace BNet.AdvCommands
                 using (var scope = new TransactionScope(TransactionScopeOption.RequiresNew))
                 {
                     // db.dayz_clear_online(serverId);
-                    var now = DateTime.Now;
+                    var now = DateTime.Now.ToUniversalTime();
                     var areOnlineGuids = this.Result.Select(r => r.Guid).ToList();
                     var whereOnline = from o in db.dayz_online
                                       where o.dayz_server_id == serverId && o.online == 1

@@ -5,7 +5,6 @@ namespace BNet.IoC
 {
     using System;
     using System.Collections.Generic;
-    using System.Globalization;
     using System.Linq;
     using System.Threading;
     using Autofac;
@@ -41,6 +40,21 @@ namespace BNet.IoC
         public Dictionary<string, RConCommandMetadata> BNetCommandsMetadata { get; set; }
 
 
+        public static string ConstructBNetEntityConnectionString(string connectionString)
+        {
+            if (connectionString == null)
+            {
+                return null;
+            }
+
+            connectionString = connectionString.Replace("\"", "'");
+            return string.Format(
+                    "metadata=res://*/Data.BNetDb.csdl|res://*/Data.BNetDb.ssdl|res://*/Data.BNetDb.msl;provider=MySql.Data.MySqlClient;"
+                    + "provider connection string=\"{0}\";",
+                    connectionString);
+        }
+
+
         public static string ConstructBNetConnectionString(
             string user, string pwd, string host, string port, string db)
         {
@@ -61,17 +75,17 @@ namespace BNet.IoC
                 return null;
             }
 
-            string connString =
+            var connString =
                 string.Format(
-                    "metadata=res://*/Data.BNetDb.csdl|res://*/Data.BNetDb.ssdl|res://*/Data.BNetDb.msl;provider=MySql.Data.MySqlClient;"
-                    + "provider connection string=\"server='{2}';port={3};database='{4}';User Id='{0}';Password='{1}';"
-                    + "Check Parameters=false;Persist Security Info=False;Allow Zero Datetime=True;Convert Zero Datetime=True;\"", 
-                    user, 
-                    pwd, 
-                    host, 
-                    port, 
+                    "server='{2}';port={3};database='{4}';User Id='{0}';Password='{1}';"
+                    + "Check Parameters=false;Persist Security Info=False;Allow Zero Datetime=True;Convert Zero Datetime=True;",
+                    user,
+                    pwd,
+                    host,
+                    port,
                     db);
-            return connString;
+            
+            return ConstructBNetEntityConnectionString(connString);
         }
 
 
@@ -108,6 +122,8 @@ namespace BNet.IoC
             IEnumerable<ServerInfo> servers;
             using (var db = new BNetDb(this.DbConnectionString))
             {
+                db.Configuration.ProxyCreationEnabled = false;
+
                 var dayzServers = db.dayz_server.Where(s => s.server_id == 1).ToArray();
                 servers =
                     dayzServers.Select(

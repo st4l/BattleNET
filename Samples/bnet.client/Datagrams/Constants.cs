@@ -16,7 +16,7 @@ namespace BNet.Client.Datagrams
 
         public const int ConsoleMessageSequenceNumberIndex = 8;
 
-        public const int ConsoleMessageBodyStartIndex = 8;
+        public const int ConsoleMessageBodyStartIndex = 9;
 
         #endregion
     }

@@ -4,10 +4,12 @@
 namespace BNet.Client
 {
     using System;
+    using System.Diagnostics;
     using System.Net.Sockets;
     using System.Security.Authentication;
     using System.Threading.Tasks;
     using BNet.Client.Datagrams;
+    using log4net;
 
 
     /// <summary>
@@ -34,7 +36,7 @@ namespace BNet.Client
     ///         is used to connect to the RCon server.
     ///     </para>
     /// </remarks>
-    public class RConClient
+    public sealed class RConClient
     {
         private readonly string host;
 
@@ -47,6 +49,8 @@ namespace BNet.Client
         private UdpClient udpClient;
 
         private MessageDispatcher msgDispatcher;
+
+        private bool closed;
 
 
         public RConClient(string host, int port, string password)
@@ -61,6 +65,7 @@ namespace BNet.Client
                                      EnableBroadcast = false, 
                                      MulticastLoopback = false
                                  };
+            this.Log = LogManager.GetLogger(this.GetType());
         }
 
 
@@ -92,6 +97,8 @@ namespace BNet.Client
             set { this.msgDispatcher.DiscardConsoleMessages = value; }
         }
 
+        private ILog Log { get; set; }
+
 
         /// <summary>
         ///     Registers with the established remote Battleye RCon server
@@ -104,15 +111,24 @@ namespace BNet.Client
         /// </returns>
         public async Task<bool> ConnectAsync()
         {
+            if (this.closed)
+            {
+                throw new ObjectDisposedException(
+                    "RConClient", "This RConClient has been disposed.");
+            }
+
             this.StartListening();
 
             var loggedIn = false;
             try
             {
+                this.LogDebug("BEFORE LOGIN await Login()");
                 loggedIn = await this.Login();
+                this.LogDebug("AFTER LOGIN await Login()");
             }
             finally
             {
+                this.LogDebug("FINALLY LOGIN await Login()");
                 if (!loggedIn)
                 {
                     this.StopListening();
@@ -123,32 +139,54 @@ namespace BNet.Client
         }
 
 
-        public void Close()
+        public void Shutdown()
         {
             this.StopListening();
             this.udpClient.Close();
             this.udpClient = null;
+            this.closed = true;
+        }
+
+
+        [Conditional("TRACE")]
+        private void LogDebug(string msg)
+        {
+            this.Log.Debug(msg);
+        }
+
+
+        [Conditional("TRACE")]
+        private void LogDebugFormat(string fmt, params object[] args)
+        {
+            this.Log.DebugFormat(fmt, args);
         }
 
 
         private async Task<bool> Login()
         {
+            this.LogDebug("BEFORE LOGIN await SendDatagramAsync");
             ResponseHandler responseHandler =
-                await this.msgDispatcher.SendDatagram(new LoginDatagram(this.password));
+                await this.msgDispatcher.SendDatagramAsync(new LoginDatagram(this.password));
+            this.LogDebug("AFTER  LOGIN await SendDatagramAsync");
 
+            this.LogDebug("BEFORE LOGIN await WaitForResponse");
             bool received = await responseHandler.WaitForResponse();
+            this.LogDebug("AFTER  LOGIN await WaitForResponse");
             if (!received)
             {
+                this.LogDebug("       LOGIN TIMEOUT");
                 throw new TimeoutException("Timeout while trying to login to the remote host.");
             }
 
             var result = (LoginResponseDatagram)responseHandler.ResponseDatagram;
             if (!result.Success)
             {
+                this.LogDebug("       LOGIN INCORRECT");
                 throw new InvalidCredentialException(
                     "RCon server actively refused access with the specified password.");
             }
 
+            this.LogDebug("       LOGIN SUCCESS");
             return result.Success;
         }
 

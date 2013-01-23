@@ -15,13 +15,15 @@ namespace BNet.Client
 
 
     /// <summary>
-    ///     Receives and dispatches messages from a remote Battleye RCon server.
+    ///     Receives messages from a remote Battleye RCon server
+    ///     using a supplied <see cref="UdpClient" /> and
+    ///     dispatches them accordingly.
     /// </summary>
-    public class MessageDispatcher
+    internal sealed class MessageDispatcher
     {
-        private readonly UdpClient udpClient;
-
         private readonly ResponseMessageDispatcher responseDispatcher;
+
+        private UdpClient udpClient;
 
         private bool shutdown;
 
@@ -84,20 +86,28 @@ namespace BNet.Client
             var state = new object();
             this.asyncOperation = AsyncOperationManager.CreateOperation(null);
             new ParameterizedThreadStart(this.MainLoop).BeginInvoke(state, null, null);
+
+            // let's give the main pump some headway to start listening
+            Thread.Sleep(500);
         }
 
 
         /// <summary>
         ///     Stops acquiring messages.
         /// </summary>
-        /// <remarks>Exits the main pump thread gracefully.</remarks>
+        /// <remarks>Exits the main pump thread politely.</remarks>
         public void Shutdown()
         {
+            this.LogDebug("SHUTDOWN COMMENCING");
             this.shutdownLock = new ManualResetEventSlim(false);
             this.shutdown = true;
 
             // wait until the main thread is exited
+            this.LogDebug("WAITING FOR THREADS TO EXIT");
             this.shutdownLock.Wait();
+
+            this.LogDebug("SHUTDOWN ACHIEVED");
+            this.udpClient = null;
         }
 
 
@@ -119,7 +129,7 @@ namespace BNet.Client
         ///     An <see cref="MessageReceivedHandlerArgs" /> that
         ///     contains the event data.
         /// </param>
-        public virtual void OnMessageReceived(MessageReceivedHandlerArgs e)
+        public void OnMessageReceived(MessageReceivedHandlerArgs e)
         {
             if (this.MessageReceived != null)
             {
@@ -128,7 +138,8 @@ namespace BNet.Client
         }
 
 
-        internal async Task<ResponseHandler> SendDatagram(IOutboundDatagram dgram)
+        [HostProtection(Synchronization = true, ExternalThreading = true)]
+        internal async Task<ResponseHandler> SendDatagramAsync(IOutboundDatagram dgram)
         {
             // this.outboundQueue.Enqueue(dgram);
             byte[] bytes = dgram.Build();
@@ -142,9 +153,14 @@ namespace BNet.Client
 
             // socket is thread safe
             // i.e. it is ok to send & receive at the same time from different threads
-            int transferredBytes = await this.udpClient.SendAsync(bytes, bytes.Length);
+            this.LogDebug("BEFORE await SendDatagramAsync");
+            int transferredBytes =
+                await
+                this.udpClient.SendAsync(bytes, bytes.Length)
+                    .ConfigureAwait(continueOnCapturedContext: false);
 
-            // .ConfigureAwait(continueOnCapturedContext: false); 
+            this.LogDebug("AFTER  await SendDatagramAsync");
+
             Debug.Assert(
                 transferredBytes == bytes.Length, 
                 "Sent bytes count equal count of bytes meant to be sent.");
@@ -155,6 +171,20 @@ namespace BNet.Client
             }
 
             return handler;
+        }
+
+
+        [Conditional("TRACE")]
+        private void LogDebug(string msg)
+        {
+            this.Log.Debug(msg);
+        }
+
+
+        [Conditional("TRACE")]
+        private void LogDebugFormat(string fmt, params object[] args)
+        {
+            this.Log.DebugFormat(fmt, args);
         }
 
 
@@ -169,36 +199,46 @@ namespace BNet.Client
             // to avoid a possible InvalidOperationException. 
             if (Thread.CurrentThread.Name == null)
             {
-                Thread.CurrentThread.Name = "MainMsgPumpThread";
+                Thread.CurrentThread.Name = "MainPUMP" + Thread.CurrentThread.ManagedThreadId;
             }
+
+            var keepAlivePeriod = TimeSpan.FromSeconds(25);
 
             this.lastCmdSentTime = DateTime.Now.AddSeconds(10);
             while (!this.shutdown)
             {
-                this.Log.Debug("Scheduling new receive task.");
+                this.LogDebug("Scheduling new receive task.");
                 var task = this.ReceiveDatagram();
-                while (task.Status != TaskStatus.RanToCompletion
-                       && task.Status != TaskStatus.Faulted)
+                this.LogDebug("AFTER  scheduling new receive task.");
+
+                while (!task.IsCompleted && !this.shutdown)
                 {
-                    Thread.Sleep(10);
-                    if (DateTime.Now - this.lastCmdSentTime > TimeSpan.FromSeconds(25))
+                    if (DateTime.Now - this.lastCmdSentTime > keepAlivePeriod)
                     {
-                        this.SendKeepAlivePacket();
+                        var alive = this.SendKeepAlivePacket().Result;
                     }
+
+                    this.LogDebugFormat("BEFORE waiting receive task, Status={0}", task.Status);
+                    task.Wait(1000);
+                    this.LogDebugFormat("AFTER  waiting receive task, Status={0}", task.Status);
                 }
             }
+
+            this.LogDebug("Main loop exited.");
 
             // signal we're exiting the thread
             this.ExitMainLoop();
         }
 
 
-        private bool SendKeepAlivePacket()
+        private async Task<bool> SendKeepAlivePacket()
         {
             var keepAliveDgram = new CommandDatagram(string.Empty);
-            var task = this.SendDatagram(keepAliveDgram);
-            ResponseHandler result = task.Result; // blocking
-            this.Log.DebugFormat("#{0:000} Sent keep alive dgram.", keepAliveDgram.SequenceNumber);
+            var result = await this.SendDatagramAsync(keepAliveDgram);
+
+            this.LogDebugFormat("C#{0:000} Sent keep alive command.", keepAliveDgram.SequenceNumber);
+
+            await result.WaitForResponse(1000);
             var responseDgram = result.ResponseDatagram as CommandResponseDatagram;
             return responseDgram != null && responseDgram.Type == DatagramType.Command
                    && responseDgram.OriginalSequenceNumber == keepAliveDgram.SequenceNumber;
@@ -210,41 +250,42 @@ namespace BNet.Client
             this.isRunning = false;
 
             // signal we're exiting the thread
+            this.LogDebug("shutdownLock set.");
             this.shutdownLock.Set();
         }
 
 
         /// <summary>
-        ///     Returns a message asynchronously that was received from
+        ///     Handles a message asynchronously that was received from
         ///     the RCon server.
         /// </summary>
-        /// <remarks>
-        ///     Usage: IInboundDatagram x = await ReceiveDatagram();
-        /// </remarks>
-        /// <returns>
-        ///     When the task executes, the received <see cref="IInboundDatagram" />,
-        ///     or null if <see cref="DiscardConsoleMessages" /> is true and
-        ///     the received datagram was a console message (type 2).
-        /// </returns>
         [HostProtection(Synchronization = true, ExternalThreading = true)]
         private async Task ReceiveDatagram()
         {
-            // ReceiveAsync (BeginRead) will block a new thread head-on against the I/O completion port
+            // ReceiveAsync (BeginRead) will spawn a new thread
+            // which blocks head-on against the IO Completion Port
             // http://msdn.microsoft.com/en-us/library/windows/desktop/aa364986(v=vs.85).aspx
-            UdpReceiveResult result = await this.udpClient.ReceiveAsync();
+            var task = this.udpClient.ReceiveAsync();
+
+            this.LogDebug("BEFORE await ReceiveAsync");
+            UdpReceiveResult result = await task
+
+                                                // do not incurr in ANOTHER context switch cost
+                                                .ConfigureAwait(false);
+            this.LogDebug("AFTER  await ReceiveAsync");
 
             this.lastDgramReceivedTime = DateTime.Now;
             byte dgramType = result.Buffer[Constants.DatagramTypeIndex];
-            this.Log.DebugFormat("Received - type {0:0} dgram.", dgramType);
+            this.LogDebugFormat("{0:0}    Type dgram received.", dgramType);
 
             if (dgramType == (byte)DatagramType.Message)
             {
                 byte conMsgSeq = result.Buffer[Constants.ConsoleMessageSequenceNumberIndex];
-                this.Log.DebugFormat("#{0:000} Received - Console message.", conMsgSeq);
-                
+                this.LogDebugFormat("M#{0:000} Received", conMsgSeq);
+
                 if (this.DiscardConsoleMessages)
                 {
-                    this.AcknowledgeMessage(conMsgSeq);
+                    await this.AcknowledgeMessage(conMsgSeq);
                     return;
                 }
             }
@@ -252,7 +293,7 @@ namespace BNet.Client
             var dgram = InboundDatagramBase.ParseReceivedBytes(result.Buffer);
             if (dgram != null)
             {
-                this.DispatchReceivedMessage(dgram);
+                await this.DispatchReceivedMessage(dgram);
             }
         }
 
@@ -263,19 +304,22 @@ namespace BNet.Client
         /// <param name="dgram">
         ///     The received <see cref="IDatagram" />.
         /// </param>
-        private void DispatchReceivedMessage(IInboundDatagram dgram)
+        private async Task DispatchReceivedMessage(IInboundDatagram dgram)
         {
             if (dgram != null)
             {
                 if (dgram.Type == DatagramType.Message)
                 {
                     var conMsg = (ConsoleMessageDatagram)dgram;
-                    this.AcknowledgeMessage(conMsg.SequenceNumber);
+                    await this.AcknowledgeMessage(conMsg.SequenceNumber);
                     this.DispatchConsoleMessage(conMsg);
+                    return;
                 }
 
                 // else, dgram is either login or command response
+                this.LogDebug("BEFORE response.Dispatch");
                 this.responseDispatcher.Dispatch(dgram);
+                this.LogDebug("AFTER  response.Dispatch");
             }
         }
 
@@ -287,11 +331,10 @@ namespace BNet.Client
         /// <param name="seqNumber">
         ///     The sequence number of the received <see cref="ConsoleMessageDatagram" />.
         /// </param>
-        private void AcknowledgeMessage(byte seqNumber)
+        private async Task AcknowledgeMessage(byte seqNumber)
         {
-            var task = this.SendDatagram(new AcknowledgeMessageDatagram(seqNumber));
-            task.Wait(); // blocking
-            this.Log.DebugFormat("#{0:000} Acknowledged - Console message.", seqNumber);
+            await this.SendDatagramAsync(new AcknowledgeMessageDatagram(seqNumber));
+            this.LogDebugFormat("M#{0:000} Acknowledged", seqNumber);
         }
 
 

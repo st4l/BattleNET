@@ -1,0 +1,7 @@
+﻿Requirements
+============
+
+* Task<ConnectResult> Connect(string host, int port, string password)
+* bool KeepAlive
+* Task<CommandResponse> SendCommand(Command)
+* ConsoleMessageReceived(object sender, RConMessage msg)

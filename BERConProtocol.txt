@@ -10,7 +10,7 @@ General
 
 BE RCon uses the game server's network interface, i.e. its UDP game port.
 Due to the unreliable nature of UDP the client has to take care of potential packet loss.
-The protocol specifies the following 6-byte header in all BE RCon packets, incoming and outgoing:
+The protocol specifies the following 7-byte header in all BE RCon packets, incoming and outgoing:
 
     'B'(0x42) | 'E'(0x45) | 4-byte CRC32 checksum of the subsequent bytes | 0xFF
 

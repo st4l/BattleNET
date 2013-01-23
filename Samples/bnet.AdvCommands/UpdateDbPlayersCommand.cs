@@ -46,6 +46,7 @@ namespace BNet.AdvCommands
 
         private void UpdateDatabase()
         {
+            // TODO: rethrow exs using System.Runtime.ExceptionServices.ExceptionDispatchInfo
             using (var db = new BNetDb(this.Context.DbConnectionString))
             {
                 db.HookSaveChanges(this.LogSql);
@@ -53,7 +54,8 @@ namespace BNet.AdvCommands
                 using (var scope = new TransactionScope(TransactionScopeOption.RequiresNew))
                 {
                     // db.dayz_clear_online(serverId);
-                    var now = DateTime.Now.ToUniversalTime();
+                    // TODO: DateTimeOffset.UtcNow;
+                    var now = DateTime.UtcNow;
                     var areOnlineGuids = this.Result.Select(r => r.Guid).ToList();
                     var whereOnline = from o in db.dayz_online
                                       where o.dayz_server_id == serverId && o.online == 1

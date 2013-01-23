@@ -1,6 +1,11 @@
 <StyleCopSettings Version="105">
   <GlobalSettings>
     <StringProperty Name="MergeSettingsFiles">NoMerge</StringProperty>
+    <CollectionProperty Name="RecognizedWords">
+      <Value>Battl</Value>
+      <Value>BattlEye</Value>
+      <Value>xaml</Value>
+    </CollectionProperty>
   </GlobalSettings>
   <Analyzers>
     <Analyzer AnalyzerId="StyleCop.CSharp.DocumentationRules">
@@ -163,6 +168,7 @@
         <CollectionProperty Name="Hungarian">
           <Value>be</Value>
           <Value>db</Value>
+          <Value>is</Value>
         </CollectionProperty>
       </AnalyzerSettings>
     </Analyzer>

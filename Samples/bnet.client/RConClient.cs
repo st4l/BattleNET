@@ -5,7 +5,9 @@ namespace BNet.Client
 {
     using System;
     using System.Diagnostics;
+    using System.Globalization;
     using System.Net.Sockets;
+    using System.Runtime.ExceptionServices;
     using System.Security.Authentication;
     using System.Threading.Tasks;
     using BNet.Client.Datagrams;
@@ -38,7 +40,7 @@ namespace BNet.Client
     ///         <see cref='System.Net.Sockets.UdpClient' />.
     ///     </para>
     /// </remarks>
-    public sealed class RConClient
+    public sealed class RConClient : IDisposable
     {
         private readonly string host;
 
@@ -48,11 +50,13 @@ namespace BNet.Client
 
         private readonly OutboundDatagramQueue outboundQueue = new OutboundDatagramQueue();
 
-        private UdpClient udpClient;
+        private readonly UdpClient udpClient;
 
         private MessageDispatcher msgDispatcher;
 
         private bool closed;
+
+        private bool disposed = false;
 
         private EventHandler<MessageReceivedEventArgs> subscribedMsgReceivedHandler;
 
@@ -62,14 +66,39 @@ namespace BNet.Client
             this.host = host;
             this.port = port;
             this.password = password;
-            this.udpClient = new UdpClient(this.host, this.port)
+            UdpClient client = null;
+            try
+            {
+                client = new UdpClient(this.host, this.port)
                                  {
-                                    // ExclusiveAddressUse = true, 
-                                     DontFragment = true, 
-                                     EnableBroadcast = false, 
+                                     DontFragment = true,
+                                     EnableBroadcast = false,
                                      MulticastLoopback = false
                                  };
+            }
+            catch (Exception ex)
+            {
+                client.Close();
+                var nex = ExceptionDispatchInfo.Capture(ex);
+                nex.Throw();
+            }
+            this.udpClient = client;
             this.Log = LogManager.GetLogger(this.GetType());
+        }
+
+
+        /// <summary>
+        ///     Use C# destructor syntax for finalization code. 
+        /// </summary>
+        /// <remarks>
+        ///     This destructor will run only if the Dispose method 
+        ///     does not get called. 
+        ///     It gives your base class the opportunity to finalize. 
+        ///     Do not provide destructors in types derived from this class.
+        /// </remarks>
+        ~RConClient()
+        {
+            this.Dispose(false);
         }
 
 
@@ -86,7 +115,7 @@ namespace BNet.Client
         {
             add
             {
-                lock (this.MsgReceived)
+                lock (this.msgReceivedLockObject)
                 {
                     this.MsgReceived += value;
                     if (this.subscribedMsgReceivedHandler == null)
@@ -102,7 +131,7 @@ namespace BNet.Client
 
             remove
             {
-                lock (this.MsgReceived)
+                lock (this.msgReceivedLockObject)
                 {
                     this.MsgReceived -= value;
                     if (this.subscribedMsgReceivedHandler == null)
@@ -118,6 +147,8 @@ namespace BNet.Client
         }
 
         private event EventHandler<MessageReceivedEventArgs> MsgReceived;
+
+        private object msgReceivedLockObject = new object();
 
 
         /// <summary>
@@ -186,12 +217,58 @@ namespace BNet.Client
         }
 
 
-        public void Shutdown()
+        /// <summary>
+        ///     Stops all processing gracefully and disposes this instance.
+        /// </summary>
+        public void Close()
         {
             this.StopListening();
-            this.udpClient.Close();
-            this.udpClient = null;
             this.closed = true;
+            this.Dispose();
+        }
+
+
+        /// <summary>
+        ///     Implement IDisposable.
+        /// </summary>
+        public void Dispose()
+        {
+            this.Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
+
+        /// <summary>
+        ///     Dispose managed and unmanaged resources.
+        /// </summary>
+        /// <param name="disposing">
+        ///     True unless we're called from the finalizer,
+        ///     in which case only unmanaged resources can be disposed.
+        /// </param>
+        private void Dispose(bool disposing)
+        {
+            // Check to see if Dispose has already been called. 
+            if (!this.disposed)
+            {
+                // If disposing equals true, dispose all managed 
+                // and unmanaged resources. 
+                if (disposing)
+                {
+                    // Dispose managed resources.
+                    if (this.msgDispatcher != null)
+                    {
+                        this.msgDispatcher.Close();
+                    }
+
+                    if (this.udpClient != null)
+                    {
+                        this.udpClient.Close();
+                    }
+                }
+
+                // Note disposing has been done.
+                this.disposed = true;
+            }
         }
 
 
@@ -205,7 +282,7 @@ namespace BNet.Client
         [Conditional("TRACE")]
         private void LogTraceFormat(string fmt, params object[] args)
         {
-            this.Log.DebugFormat(fmt, args);
+            this.Log.DebugFormat(CultureInfo.InvariantCulture, fmt, args);
         }
 
 
@@ -251,7 +328,7 @@ namespace BNet.Client
         {
             this.msgDispatcher.MessageReceived -= this.subscribedMsgReceivedHandler;
             this.subscribedMsgReceivedHandler = null;
-            this.msgDispatcher.Shutdown();
+            this.msgDispatcher.Close(); // disposes
             this.msgDispatcher = null;
         }
     }

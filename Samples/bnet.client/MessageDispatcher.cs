@@ -17,10 +17,10 @@ namespace BNet.Client
 
     /// <summary>
     ///     Receives messages from a remote Battleye RCon server
-    ///     using a supplied <see cref="UdpClient" /> and
+    ///     using the supplied <see cref="UdpClient" /> and
     ///     dispatches them accordingly.
     /// </summary>
-    internal sealed class MessageDispatcher
+    internal sealed class MessageDispatcher : IDisposable
     {
         private readonly ResponseMessageDispatcher responseDispatcher;
 
@@ -33,6 +33,8 @@ namespace BNet.Client
         private ManualResetEventSlim shutdownLock;
 
         private bool isRunning;
+
+        private bool disposed = false;
 
         private AsyncOperation asyncOperation;
 
@@ -52,6 +54,21 @@ namespace BNet.Client
             this.udpClient = udpClient;
             this.responseDispatcher = new ResponseMessageDispatcher();
             this.Log = LogManager.GetLogger(this.GetType());
+        }
+
+
+        /// <summary>
+        ///     Use C# destructor syntax for finalization code. 
+        /// </summary>
+        /// <remarks>
+        ///     This destructor will run only if the Dispose method 
+        ///     does not get called. 
+        ///     It gives your base class the opportunity to finalize. 
+        ///     Do not provide destructors in types derived from this class.
+        /// </remarks>
+        ~MessageDispatcher()
+        {
+            this.Dispose(false);
         }
 
 
@@ -94,10 +111,10 @@ namespace BNet.Client
 
 
         /// <summary>
-        ///     Stops acquiring messages.
+        ///     Stops all processing gracefully and disposes this instance.
         /// </summary>
         /// <remarks>Exits the main pump thread politely.</remarks>
-        internal void Shutdown()
+        internal void Close()
         {
             this.LogTrace("SHUTDOWN COMMENCING");
             this.shutdownLock = new ManualResetEventSlim(false);
@@ -107,8 +124,8 @@ namespace BNet.Client
             this.LogTrace("WAITING FOR THREADS TO EXIT");
             this.shutdownLock.Wait();
 
-            this.LogTrace("SHUTDOWN ACHIEVED");
-            this.udpClient = null;
+            this.LogTrace("SHUTDOWN ACHIEVED - DISPOSING");
+            this.Dispose();
         }
 
 
@@ -159,6 +176,7 @@ namespace BNet.Client
                 await
                 this.udpClient.SendAsync(bytes, bytes.Length)
                     .ConfigureAwait(continueOnCapturedContext: false);
+            dgram.SentTime = DateTime.Now;
 
             this.LogTrace("AFTER  await SendDatagramAsync");
 
@@ -172,6 +190,48 @@ namespace BNet.Client
             }
 
             return handler;
+        }
+
+
+        /// <summary>
+        ///     Implement IDisposable.
+        /// </summary>
+        public void Dispose()
+        {
+            this.Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
+
+        /// <summary>
+        ///     Dispose managed and unmanaged resources.
+        /// </summary>
+        /// <param name="disposing">
+        ///     True unless we're called from the finalizer,
+        ///     in which case only unmanaged resources can be disposed.
+        /// </param>
+        private void Dispose(bool disposing)
+        {
+            // Check to see if Dispose has already been called. 
+            if (!this.disposed)
+            {
+                // If disposing equals true, dispose all managed 
+                // and unmanaged resources. 
+                if (disposing)
+                {
+                    // Release managed resources.
+                    this.udpClient = null;
+
+                    if (this.shutdownLock != null)
+	                {
+                        this.shutdownLock.Dispose();
+                    }
+                    
+                }
+
+                // Note disposing has been done.
+                this.disposed = true;
+            }
         }
 
 

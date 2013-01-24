@@ -18,7 +18,7 @@ namespace BNet.Client.Datagrams
         public DateTime Timestamp { get; private set; }
 
         /// <summary>
-        /// Parses received bytes from a BattlEye RCon server.
+        ///     Parses received bytes from a BattlEye RCon server.
         /// </summary>
         /// <param name="buffer">The received bytes.</param>
         /// <returns>An <see cref="IInboundDatagram"/> containing the received information.</returns>

@@ -9,10 +9,15 @@ namespace BNet.Client
 
     public class MessageReceivedEventArgs : EventArgs
     {
-        public MessageReceivedEventArgs(ConsoleMessageDatagram dgram)
+        public MessageReceivedEventArgs(ConsoleMessageDatagram datagram)
         {
-            this.Datagram = dgram;
-            this.MessageBody = dgram.MessageBody;
+            if (datagram == null)
+            {
+                throw new ArgumentNullException("datagram");
+            }
+
+            this.Datagram = datagram;
+            this.MessageBody = datagram.MessageBody;
         }
 
 

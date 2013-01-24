@@ -61,7 +61,7 @@ namespace BNet.Client.Datagrams
 
         protected override byte[] HashFinal()
         {
-            byte[] hashBuffer = this.UInt32ToBigEndianBytes(~this.hash);
+            byte[] hashBuffer = UInt32ToBigEndianBytes(~this.hash);
             this.HashValue = hashBuffer;
             return hashBuffer;
         }
@@ -118,7 +118,7 @@ namespace BNet.Client.Datagrams
         }
 
 
-        private byte[] UInt32ToBigEndianBytes(uint x)
+        private static byte[] UInt32ToBigEndianBytes(uint x)
         {
             return new[]
                        {

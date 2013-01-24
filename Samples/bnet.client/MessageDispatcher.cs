@@ -6,6 +6,7 @@ namespace BNet.Client
     using System;
     using System.ComponentModel;
     using System.Diagnostics;
+    using System.Globalization;
     using System.Net.Sockets;
     using System.Security.Permissions;
     using System.Threading;
@@ -46,7 +47,7 @@ namespace BNet.Client
         ///     The <see cref="UdpClient" /> to be used to connect to the
         ///     RCon server.
         /// </param>
-        public MessageDispatcher(UdpClient udpClient)
+        internal MessageDispatcher(UdpClient udpClient)
         {
             this.udpClient = udpClient;
             this.responseDispatcher = new ResponseMessageDispatcher();
@@ -57,7 +58,7 @@ namespace BNet.Client
         /// <summary>
         ///     Occurs when a console message is received from the RCon server.
         /// </summary>
-        public event MessageReceivedHandler MessageReceived;
+        internal event EventHandler<MessageReceivedEventArgs> MessageReceived;
 
         /// <summary>
         ///     Gets or sets a <see cref="Boolean" /> value that specifies
@@ -65,7 +66,7 @@ namespace BNet.Client
         ///     console message datagrams received (the <see cref="MessageReceived" />
         ///     event is never raised).
         /// </summary>
-        public bool DiscardConsoleMessages { get; set; }
+        internal bool DiscardConsoleMessages { get; set; }
 
         private ILog Log { get; set; }
 
@@ -74,7 +75,7 @@ namespace BNet.Client
         ///     Starts acquiring and dispatching inbound messages in a new thread.
         /// </summary>
         /// <remarks>Starts the main message pump in a new thread.</remarks>
-        public void Start()
+        internal void Start()
         {
             if (this.isRunning)
             {
@@ -96,17 +97,17 @@ namespace BNet.Client
         ///     Stops acquiring messages.
         /// </summary>
         /// <remarks>Exits the main pump thread politely.</remarks>
-        public void Shutdown()
+        internal void Shutdown()
         {
-            this.LogDebug("SHUTDOWN COMMENCING");
+            this.LogTrace("SHUTDOWN COMMENCING");
             this.shutdownLock = new ManualResetEventSlim(false);
             this.shutdown = true;
 
             // wait until the main thread is exited
-            this.LogDebug("WAITING FOR THREADS TO EXIT");
+            this.LogTrace("WAITING FOR THREADS TO EXIT");
             this.shutdownLock.Wait();
 
-            this.LogDebug("SHUTDOWN ACHIEVED");
+            this.LogTrace("SHUTDOWN ACHIEVED");
             this.udpClient = null;
         }
 
@@ -116,7 +117,7 @@ namespace BNet.Client
         ///     message arrives, and which accepts the response message itself.
         /// </summary>
         /// <param name="handler"></param>
-        public void RegisterResponseHandler(ResponseHandler handler)
+        internal void RegisterResponseHandler(ResponseHandler handler)
         {
             this.responseDispatcher.Register(handler);
         }
@@ -126,10 +127,10 @@ namespace BNet.Client
         ///     Raises the <see cref="MessageReceived" /> event.
         /// </summary>
         /// <param name="e">
-        ///     An <see cref="MessageReceivedHandlerArgs" /> that
+        ///     An <see cref="MessageReceivedEventArgs" /> that
         ///     contains the event data.
         /// </param>
-        public void OnMessageReceived(MessageReceivedHandlerArgs e)
+        internal void OnMessageReceived(MessageReceivedEventArgs e)
         {
             if (this.MessageReceived != null)
             {
@@ -153,13 +154,13 @@ namespace BNet.Client
 
             // socket is thread safe
             // i.e. it is ok to send & receive at the same time from different threads
-            this.LogDebug("BEFORE await SendDatagramAsync");
+            this.LogTrace("BEFORE await SendDatagramAsync");
             int transferredBytes =
                 await
                 this.udpClient.SendAsync(bytes, bytes.Length)
                     .ConfigureAwait(continueOnCapturedContext: false);
 
-            this.LogDebug("AFTER  await SendDatagramAsync");
+            this.LogTrace("AFTER  await SendDatagramAsync");
 
             Debug.Assert(
                 transferredBytes == bytes.Length, 
@@ -175,16 +176,16 @@ namespace BNet.Client
 
 
         [Conditional("TRACE")]
-        private void LogDebug(string msg)
+        private void LogTrace(string msg)
         {
             this.Log.Debug(msg);
         }
 
 
         [Conditional("TRACE")]
-        private void LogDebugFormat(string fmt, params object[] args)
+        private void LogTraceFormat(string fmt, params object[] args)
         {
-            this.Log.DebugFormat(fmt, args);
+            this.Log.DebugFormat(CultureInfo.InvariantCulture, fmt, args);
         }
 
 
@@ -207,9 +208,9 @@ namespace BNet.Client
             this.lastCmdSentTime = DateTime.Now.AddSeconds(10);
             while (!this.shutdown)
             {
-                this.LogDebug("Scheduling new receive task.");
+                this.LogTrace("Scheduling new receive task.");
                 var task = this.ReceiveDatagram();
-                this.LogDebug("AFTER  scheduling new receive task.");
+                this.LogTrace("AFTER  scheduling new receive task.");
 
                 while (!task.IsCompleted && !this.shutdown)
                 {
@@ -218,13 +219,13 @@ namespace BNet.Client
                         var alive = this.SendKeepAlivePacket().Result;
                     }
 
-                    this.LogDebugFormat("BEFORE waiting receive task, Status={0}", task.Status);
+                    this.LogTraceFormat("BEFORE waiting receive task, Status={0}", task.Status);
                     task.Wait(1000);
-                    this.LogDebugFormat("AFTER  waiting receive task, Status={0}", task.Status);
+                    this.LogTraceFormat("AFTER  waiting receive task, Status={0}", task.Status);
                 }
             }
 
-            this.LogDebug("Main loop exited.");
+            this.LogTrace("Main loop exited.");
 
             // signal we're exiting the thread
             this.ExitMainLoop();
@@ -236,7 +237,7 @@ namespace BNet.Client
             var keepAliveDgram = new CommandDatagram(string.Empty);
             var result = await this.SendDatagramAsync(keepAliveDgram);
 
-            this.LogDebugFormat("C#{0:000} Sent keep alive command.", keepAliveDgram.SequenceNumber);
+            this.LogTraceFormat("C#{0:000} Sent keep alive command.", keepAliveDgram.SequenceNumber);
 
             await result.WaitForResponse(1000);
             var responseDgram = result.ResponseDatagram as CommandResponseDatagram;
@@ -250,7 +251,7 @@ namespace BNet.Client
             this.isRunning = false;
 
             // signal we're exiting the thread
-            this.LogDebug("shutdownLock set.");
+            this.LogTrace("shutdownLock set.");
             this.shutdownLock.Set();
         }
 
@@ -267,21 +268,21 @@ namespace BNet.Client
             // http://msdn.microsoft.com/en-us/library/windows/desktop/aa364986(v=vs.85).aspx
             var task = this.udpClient.ReceiveAsync();
 
-            this.LogDebug("BEFORE await ReceiveAsync");
+            this.LogTrace("BEFORE await ReceiveAsync");
             UdpReceiveResult result = await task
 
                                                 // do not incurr in ANOTHER context switch cost
                                                 .ConfigureAwait(false);
-            this.LogDebug("AFTER  await ReceiveAsync");
+            this.LogTrace("AFTER  await ReceiveAsync");
 
             this.lastDgramReceivedTime = DateTime.Now;
             byte dgramType = result.Buffer[Constants.DatagramTypeIndex];
-            this.LogDebugFormat("{0:0}    Type dgram received.", dgramType);
+            this.LogTraceFormat("{0:0}    Type dgram received.", dgramType);
 
             if (dgramType == (byte)DatagramType.Message)
             {
                 byte conMsgSeq = result.Buffer[Constants.ConsoleMessageSequenceNumberIndex];
-                this.LogDebugFormat("M#{0:000} Received", conMsgSeq);
+                this.LogTraceFormat("M#{0:000} Received", conMsgSeq);
 
                 if (this.DiscardConsoleMessages)
                 {
@@ -317,9 +318,9 @@ namespace BNet.Client
                 }
 
                 // else, dgram is either login or command response
-                this.LogDebug("BEFORE response.Dispatch");
+                this.LogTrace("BEFORE response.Dispatch");
                 this.responseDispatcher.Dispatch(dgram);
-                this.LogDebug("AFTER  response.Dispatch");
+                this.LogTrace("AFTER  response.Dispatch");
             }
         }
 
@@ -334,20 +335,26 @@ namespace BNet.Client
         private async Task AcknowledgeMessage(byte seqNumber)
         {
             await this.SendDatagramAsync(new AcknowledgeMessageDatagram(seqNumber));
-            this.LogDebugFormat("M#{0:000} Acknowledged", seqNumber);
+            this.LogTraceFormat("M#{0:000} Acknowledged", seqNumber);
         }
 
 
         /// <summary>
-        ///     Dispatches received console messages through current AsyncOperation.
+        ///     Dispatches received console messages to the appropriate
+        ///     threading context (e.g. the UI thread or the ASP.NET context),
+        ///     by using AsyncOperation.
         /// </summary>
         /// <param name="dgram">
         ///     The <see cref="ConsoleMessageDatagram" />
         ///     representing the received console message.
         /// </param>
+        /// <remarks>
+        ///     The context switch is costly, but usually what the
+        ///     library user will expect.
+        /// </remarks>
         private void DispatchConsoleMessage(ConsoleMessageDatagram dgram)
         {
-            var args = new MessageReceivedHandlerArgs(dgram);
+            var args = new MessageReceivedEventArgs(dgram);
 
             if (this.asyncOperation != null)
             {
@@ -362,7 +369,7 @@ namespace BNet.Client
 
         private void RaiseMessageReceived(object args)
         {
-            this.OnMessageReceived((MessageReceivedHandlerArgs)args);
+            this.OnMessageReceived((MessageReceivedEventArgs)args);
         }
     }
 }

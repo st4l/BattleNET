@@ -46,26 +46,6 @@ namespace BNet.Client.Datagrams
         }
 
 
-        public static uint Compute(byte[] buffer)
-        {
-            return
-                ~CalculateHash(
-                    InitializeTable(DefaultPolynomial), DefaultSeed, buffer, 0, buffer.Length);
-        }
-
-
-        public static uint Compute(uint seed, byte[] buffer)
-        {
-            return
-                ~CalculateHash(InitializeTable(DefaultPolynomial), seed, buffer, 0, buffer.Length);
-        }
-
-
-        public static uint Compute(uint polynomial, uint seed, byte[] buffer)
-        {
-            return ~CalculateHash(InitializeTable(polynomial), seed, buffer, 0, buffer.Length);
-        }
-
 
         public override sealed void Initialize()
         {

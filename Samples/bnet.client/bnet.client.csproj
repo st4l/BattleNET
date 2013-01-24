@@ -22,6 +22,7 @@
     <DefineConstants>DEBUG</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
+    <CodeAnalysisRuleSet>AllRules.ruleset</CodeAnalysisRuleSet>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugType>pdbonly</DebugType>
@@ -64,9 +65,9 @@
     <Compile Include="Datagrams\IOutboundDatagram.cs" />
     <Compile Include="Datagrams\LoginDatagram.cs" />
     <Compile Include="Datagrams\LoginResponseDatagram.cs" />
+    <Compile Include="GlobalSuppressions.cs" />
     <Compile Include="MessageDispatcher.cs" />
-    <Compile Include="MessageReceivedHandler.cs" />
-    <Compile Include="MessageReceivedHandlerArgs.cs" />
+    <Compile Include="MessageReceivedEventArgs.cs" />
     <Compile Include="OutboundDatagramQueue.cs" />
     <Compile Include="RConClient.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

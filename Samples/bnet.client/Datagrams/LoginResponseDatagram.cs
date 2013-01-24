@@ -3,10 +3,17 @@
 // ----------------------------------------------------------------------------------------------------
 namespace BNet.Client.Datagrams
 {
+    using System;
+
+
     public class LoginResponseDatagram : InboundDatagramBase
     {
         public LoginResponseDatagram(byte[] buffer)
         {
+            if (buffer == null)
+            {
+                throw new ArgumentNullException("buffer");
+            }
             this.Success = buffer[Constants.LoginReturnCodeIndex] == 1;
         }
 

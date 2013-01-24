@@ -1,4 +1,7 @@
-﻿namespace BNet.AdvCommands.misc
+﻿// ----------------------------------------------------------------------------------------------------
+// <copyright file="EntityFrameworkHook.cs" company="Me">Copyright (c) 2012 St4l.</copyright>
+// ----------------------------------------------------------------------------------------------------
+namespace BNet.AdvCommands.misc
 {
     using System;
     using System.Collections.Generic;
@@ -6,6 +9,7 @@
     using System.Data.Entity;
     using System.Data.EntityClient;
     using System.Data.Objects;
+    using System.Diagnostics.CodeAnalysis;
     using System.Globalization;
     using System.Linq;
     using System.Reflection;
@@ -14,23 +18,24 @@
 
     public class EntityFrameworkHook
     {
-        private readonly DbContext _context;
+        private readonly DbContext context;
 
-        private readonly SaveChangesHookHandler _funcDelegate;
+        [SuppressMessage("StyleCop.CSharp.NamingRules", "SA1309:FieldNamesMustNotBeginWithUnderscore", Justification = "Reviewed. Suppression is OK here.")]
+        private readonly SaveChangesHookHandler funcDelegate;
 
 
         public EntityFrameworkHook(DbContext context, SaveChangesHookHandler funcDelegate)
         {
-            this._context = context;
-            this._funcDelegate = funcDelegate;
+            this.context = context;
+            this.funcDelegate = funcDelegate;
 
-            this.SaveChanges += this._funcDelegate;
+            this.SaveChanges += this.funcDelegate;
 
             var internalContext =
-                this._context.GetType()
+                this.context.GetType()
                     .GetProperties(BindingFlags.NonPublic | BindingFlags.Instance)
                     .Where(p => p.Name == "InternalContext")
-                    .Select(p => p.GetValue(this._context, null))
+                    .Select(p => p.GetValue(this.context, null))
                     .SingleOrDefault();
 
             var objectContext =
@@ -57,15 +62,13 @@
         public event SaveChangesHookHandler SaveChanges;
 
 
-        #region Methods
-
         private void OnSaveChanges(object sender, EventArgs e)
         {
             var commandText = new StringBuilder();
 
             var conn =
                 sender.GetType()
-                      .GetProperties(BindingFlags.Public | BindingFlags.Instance)
+                      .GetProperties(BindingFlags.Public|BindingFlags.Instance)
                       .Where(p => p.Name == "Connection")
                       .Select(p => p.GetValue(sender, null))
                       .SingleOrDefault();
@@ -75,8 +78,7 @@
             var objStateManager =
                 (ObjectStateManager)
                 sender.GetType()
-                      .GetProperty(
-                          "ObjectStateManager", BindingFlags.Instance | BindingFlags.Public)
+                      .GetProperty("ObjectStateManager", BindingFlags.Instance|BindingFlags.Public)
                       .GetValue(sender, null);
 
             var workspace = entityConn.GetMetadataWorkspace();
@@ -86,7 +88,7 @@
                       .Assembly.GetType("System.Data.Mapping.Update.Internal.UpdateTranslator");
             var translator = Activator.CreateInstance(
                 translatorT, 
-                BindingFlags.Instance | BindingFlags.NonPublic, 
+                BindingFlags.Instance|BindingFlags.NonPublic, 
                 null, 
                 new object[]
                     {
@@ -97,7 +99,7 @@
             var produceCommands = translator.GetType()
                                             .GetMethod(
                                                 "ProduceCommands", 
-                                                BindingFlags.NonPublic | BindingFlags.Instance);
+                                                BindingFlags.NonPublic|BindingFlags.Instance);
             var commands = (IEnumerable<object>)produceCommands.Invoke(translator, null);
 
             foreach (var cmd in commands)
@@ -106,7 +108,7 @@
                 var dcmd =
                     (DbCommand)
                     cmd.GetType()
-                       .GetMethod("CreateCommand", BindingFlags.Instance | BindingFlags.NonPublic)
+                       .GetMethod("CreateCommand", BindingFlags.Instance|BindingFlags.NonPublic)
                        .Invoke(cmd, new[] { translator, identifierValues });
 
                 foreach (DbParameter param in dcmd.Parameters)
@@ -130,10 +132,8 @@
 
             if (this.SaveChanges != null)
             {
-                this.SaveChanges.Invoke(this._context, commandText.ToString());
+                this.SaveChanges.Invoke(this.context, commandText.ToString());
             }
         }
-
-        #endregion
     }
 }

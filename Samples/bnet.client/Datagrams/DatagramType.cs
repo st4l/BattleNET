@@ -3,7 +3,7 @@
 // ----------------------------------------------------------------------------------------------------
 namespace BNet.Client.Datagrams
 {
-    public enum DatagramType : byte
+    public enum DatagramType : int
     {
         Login = 0, 
 

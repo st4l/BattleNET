@@ -3,12 +3,13 @@
 // ----------------------------------------------------------------------------------------------------
 namespace BNet.Client
 {
+    using System;
     using BNet.Client.Datagrams;
 
 
-    public class MessageReceivedHandlerArgs
+    public class MessageReceivedEventArgs : EventArgs
     {
-        public MessageReceivedHandlerArgs(ConsoleMessageDatagram dgram)
+        public MessageReceivedEventArgs(ConsoleMessageDatagram dgram)
         {
             this.Datagram = dgram;
             this.MessageBody = dgram.MessageBody;

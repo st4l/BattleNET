@@ -5,7 +5,7 @@ namespace BNet.Client.Datagrams
 {
     public class CommandResponseDatagram : InboundDatagramBase
     {
-        public CommandResponseDatagram(byte[] buffer)
+        internal CommandResponseDatagram(byte[] buffer)
         {
             this.OriginalSequenceNumber = buffer[Constants.CommandResponseSeqIndex];
         }

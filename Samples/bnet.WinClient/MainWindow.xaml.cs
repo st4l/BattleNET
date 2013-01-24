@@ -57,7 +57,7 @@ namespace bnet.WinClient
         }
 
 
-        private void OnRccOnMessageReceived(object s, MessageReceivedHandlerArgs args)
+        private void OnRccOnMessageReceived(object s, MessageReceivedEventArgs args)
         {
             this.WriteLine(args.MessageBody);
         }

@@ -17,10 +17,7 @@ namespace BNet.Client
     /// </summary>
     /// <remarks>
     ///     <para>
-    ///         The
-    ///         <see href="http://www.battleye.com/downloads/BERConProtocol.txt">
-    ///             BattlEye RCon protocol
-    ///         </see>
+    ///         The [BattlEye RCon protocol](http://www.battleye.com/downloads/BERConProtocol.txt)
     ///         uses the ArmA game server's network interface, i.e. its UDP game port.
     ///     </para>
     ///     <para>
@@ -31,9 +28,14 @@ namespace BNet.Client
     ///         same session.
     ///     </para>
     ///     <para>
+    ///         The use of UDP also implies networking constraints that this client deals
+    ///         with: inbound and outbound UDP messages are not guaranteed to arrive, nor
+    ///         are they guaranteed to arrive in the order in which they were sent by either
+    ///         the server or the client.
+    ///     </para>
+    ///     <para>
     ///         <see cref="RConClient" /> encapsulates and augments
-    ///         <see cref='System.Net.Sockets.UdpClient' />, which
-    ///         is used to connect to the RCon server.
+    ///         <see cref='System.Net.Sockets.UdpClient' />.
     ///     </para>
     /// </remarks>
     public sealed class RConClient
@@ -51,6 +53,8 @@ namespace BNet.Client
         private MessageDispatcher msgDispatcher;
 
         private bool closed;
+
+        private EventHandler<MessageReceivedEventArgs> subscribedMsgReceivedHandler;
 
 
         public RConClient(string host, int port, string password)
@@ -72,7 +76,49 @@ namespace BNet.Client
         /// <summary>
         ///     Occurs when a console message is received from the RCon server.
         /// </summary>
-        public event MessageReceivedHandler MessageReceived;
+        /// <remarks>
+        ///     In <see cref="StartListening" /> we are passing along the
+        ///     multicast delegate directly to
+        ///     <see cref="MessageDispatcher.MessageReceived" />, so we
+        ///     need to update it if we already passed it (subscribed).
+        /// </remarks>
+        public event EventHandler<MessageReceivedEventArgs> MessageReceived
+        {
+            add
+            {
+                lock (this.MsgReceived)
+                {
+                    this.MsgReceived += value;
+                    if (this.subscribedMsgReceivedHandler == null)
+                    {
+                        return;
+                    }
+
+                    this.msgDispatcher.MessageReceived -= this.subscribedMsgReceivedHandler;
+                    this.subscribedMsgReceivedHandler = this.MsgReceived;
+                    this.msgDispatcher.MessageReceived += this.MsgReceived;
+                }
+            }
+
+            remove
+            {
+                lock (this.MsgReceived)
+                {
+                    this.MsgReceived -= value;
+                    if (this.subscribedMsgReceivedHandler == null)
+                    {
+                        return;
+                    }
+
+                    this.msgDispatcher.MessageReceived -= this.subscribedMsgReceivedHandler;
+                    this.subscribedMsgReceivedHandler = this.MsgReceived;
+                    this.msgDispatcher.MessageReceived += this.MsgReceived;
+                }
+            }
+        }
+
+        private event EventHandler<MessageReceivedEventArgs> MsgReceived;
+
 
         /// <summary>
         ///     Gets or sets a <see cref="bool" /> value that specifies
@@ -84,6 +130,7 @@ namespace BNet.Client
             get { throw new NotImplementedException(); }
             set { throw new NotImplementedException(); }
         }
+
 
         /// <summary>
         ///     Gets or sets a <see cref="bool" /> value that specifies
@@ -122,13 +169,13 @@ namespace BNet.Client
             var loggedIn = false;
             try
             {
-                this.LogDebug("BEFORE LOGIN await Login()");
+                this.LogTrace("BEFORE LOGIN await Login()");
                 loggedIn = await this.Login();
-                this.LogDebug("AFTER LOGIN await Login()");
+                this.LogTrace("AFTER LOGIN await Login()");
             }
             finally
             {
-                this.LogDebug("FINALLY LOGIN await Login()");
+                this.LogTrace("FINALLY LOGIN await Login()");
                 if (!loggedIn)
                 {
                     this.StopListening();
@@ -149,14 +196,14 @@ namespace BNet.Client
 
 
         [Conditional("TRACE")]
-        private void LogDebug(string msg)
+        private void LogTrace(string msg)
         {
             this.Log.Debug(msg);
         }
 
 
         [Conditional("TRACE")]
-        private void LogDebugFormat(string fmt, params object[] args)
+        private void LogTraceFormat(string fmt, params object[] args)
         {
             this.Log.DebugFormat(fmt, args);
         }
@@ -164,29 +211,29 @@ namespace BNet.Client
 
         private async Task<bool> Login()
         {
-            this.LogDebug("BEFORE LOGIN await SendDatagramAsync");
+            this.LogTrace("BEFORE LOGIN await SendDatagramAsync");
             ResponseHandler responseHandler =
                 await this.msgDispatcher.SendDatagramAsync(new LoginDatagram(this.password));
-            this.LogDebug("AFTER  LOGIN await SendDatagramAsync");
+            this.LogTrace("AFTER  LOGIN await SendDatagramAsync");
 
-            this.LogDebug("BEFORE LOGIN await WaitForResponse");
+            this.LogTrace("BEFORE LOGIN await WaitForResponse");
             bool received = await responseHandler.WaitForResponse();
-            this.LogDebug("AFTER  LOGIN await WaitForResponse");
+            this.LogTrace("AFTER  LOGIN await WaitForResponse");
             if (!received)
             {
-                this.LogDebug("       LOGIN TIMEOUT");
+                this.LogTrace("       LOGIN TIMEOUT");
                 throw new TimeoutException("Timeout while trying to login to the remote host.");
             }
 
             var result = (LoginResponseDatagram)responseHandler.ResponseDatagram;
             if (!result.Success)
             {
-                this.LogDebug("       LOGIN INCORRECT");
+                this.LogTrace("       LOGIN INCORRECT");
                 throw new InvalidCredentialException(
                     "RCon server actively refused access with the specified password.");
             }
 
-            this.LogDebug("       LOGIN SUCCESS");
+            this.LogTrace("       LOGIN SUCCESS");
             return result.Success;
         }
 
@@ -194,23 +241,16 @@ namespace BNet.Client
         private void StartListening()
         {
             this.msgDispatcher = new MessageDispatcher(this.udpClient);
-            this.msgDispatcher.MessageReceived += this.OnMessageReceived;
+            this.subscribedMsgReceivedHandler = this.MsgReceived;
+            this.msgDispatcher.MessageReceived += this.subscribedMsgReceivedHandler;
             this.msgDispatcher.Start();
-        }
-
-
-        private void OnMessageReceived(object sender, MessageReceivedHandlerArgs e)
-        {
-            if (this.MessageReceived != null)
-            {
-                this.MessageReceived(this, e);
-            }
         }
 
 
         private void StopListening()
         {
-            this.msgDispatcher.MessageReceived -= this.OnMessageReceived;
+            this.msgDispatcher.MessageReceived -= this.subscribedMsgReceivedHandler;
+            this.subscribedMsgReceivedHandler = null;
             this.msgDispatcher.Shutdown();
             this.msgDispatcher = null;
         }

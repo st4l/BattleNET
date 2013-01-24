@@ -32,17 +32,20 @@ namespace BNet.Client
         public IOutboundDatagram SentDatagram { get; private set; }
 
         /// <summary>
-        ///     The received response message.
+        ///     After the response is received, the received response 
+        ///     message.
         /// </summary>
         public IInboundDatagram ResponseDatagram { get; private set; }
 
 
         /// <summary>
-        ///     Blocks the current thread until a response is received.
+        ///     Blocks the current thread until a response is received,
+        ///     after which the <see cref="ResponseDatagram"/> property
+        ///     will contain the received datagram.
         /// </summary>
         /// <param name="timeout">Timeout in milliseconds.</param>
         /// <returns>
-        ///     true if the response was received; otherwise, false.
+        ///     True if the response was received; otherwise, false.
         /// </returns>
         public Task<bool> WaitForResponse(int timeout = 1000 * 3)
         {
@@ -57,7 +60,7 @@ namespace BNet.Client
         ///     thread to continue.
         /// </summary>
         /// <param name="result"></param>
-        public void Return(IInboundDatagram result)
+        internal void Return(IInboundDatagram result)
         {
             this.ResponseDatagram = result;
             this.flag.Set();

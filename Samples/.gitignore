@@ -7,11 +7,12 @@
 *.[Cc]ache
 *.bak
 *.ncb
-*.log 
+*.log
+*.vsp
 *.DS_Store
 [Tt]humbs.db 
 _ReSharper.*
 *.resharper
 Ankh.NoLoad
 release.bat
-
+bnet.doxygen/generated*/

@@ -51,7 +51,7 @@ namespace BNet.Client.Datagrams
         /// #### CONSOLE MESSAGE
         /// |Index       |   7    |                8                    |      9  . . .       |
         /// |:---------- | :----: | :---------------------------------: | :-----------------: |
-        /// |Description |   0x02 | 1-byte sequence number (starting at 0) | server message (ASCII string without null-terminator) |
+        /// |Description |  0x02  | 1-byte sequence number (starting at 0) | server message (ASCII string without null-terminator) |
         ///     
         /// </remarks>
         public static IInboundDatagram ParseReceivedBytes(byte[] buffer)

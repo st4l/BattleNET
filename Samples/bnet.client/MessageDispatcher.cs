@@ -8,11 +8,13 @@ namespace BNet.Client
     using System.Diagnostics;
     using System.Globalization;
     using System.Net.Sockets;
+    using System.Runtime.ExceptionServices;
     using System.Security.Permissions;
     using System.Threading;
     using System.Threading.Tasks;
     using BNet.Client.Datagrams;
     using log4net;
+    using log4net.Core;
 
 
     /// <summary>
@@ -24,7 +26,7 @@ namespace BNet.Client
     {
         private readonly ResponseMessageDispatcher responseDispatcher;
 
-        private UdpClient udpClient;
+        private IUdpClient udpClient;
 
         private bool shutdown;
 
@@ -32,7 +34,7 @@ namespace BNet.Client
 
         private ManualResetEventSlim shutdownLock;
 
-        private bool isRunning;
+        private bool hasStarted;
 
         private bool disposed = false;
 
@@ -40,6 +42,15 @@ namespace BNet.Client
 
         private DateTime lastCmdSentTime;
 
+        private int inCount;
+
+        private int outCount;
+
+        private bool forceShutdown = false;
+
+        private bool mainLoopDead;
+
+        private ILog Log { get; set; }
 
         /// <summary>
         ///     Initializes a new instance of <see cref="MessageDispatcher" />
@@ -49,8 +60,9 @@ namespace BNet.Client
         ///     The <see cref="UdpClient" /> to be used to connect to the
         ///     RCon server.
         /// </param>
-        internal MessageDispatcher(UdpClient udpClient)
+        internal MessageDispatcher(IUdpClient udpClient)
         {
+            // throw new ArgumentException("Test shall not pass.");
             this.udpClient = udpClient;
             this.responseDispatcher = new ResponseMessageDispatcher();
             this.Log = LogManager.GetLogger(this.GetType());
@@ -71,11 +83,28 @@ namespace BNet.Client
             this.Dispose(false);
         }
 
+        
+        /// <summary>
+        ///     Implement IDisposable.
+        /// </summary>
+        public void Dispose()
+        {
+            this.Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
 
         /// <summary>
         ///     Occurs when a console message is received from the RCon server.
         /// </summary>
         internal event EventHandler<MessageReceivedEventArgs> MessageReceived;
+
+
+        /// <summary>
+        ///     Occurs when a console message is received from the RCon server.
+        /// </summary>
+        internal event EventHandler<DisconnectedEventArgs> Disconnected;
+
 
         /// <summary>
         ///     Gets or sets a <see cref="Boolean" /> value that specifies
@@ -85,8 +114,6 @@ namespace BNet.Client
         /// </summary>
         internal bool DiscardConsoleMessages { get; set; }
 
-        private ILog Log { get; set; }
-
 
         /// <summary>
         ///     Starts acquiring and dispatching inbound messages in a new thread.
@@ -94,19 +121,30 @@ namespace BNet.Client
         /// <remarks>Starts the main message pump in a new thread.</remarks>
         internal void Start()
         {
-            if (this.isRunning)
+            if (this.hasStarted)
             {
                 throw new InvalidOperationException("Already running.");
             }
 
-            this.isRunning = true;
+            this.hasStarted = true;
 
             var state = new object();
             this.asyncOperation = AsyncOperationManager.CreateOperation(null);
-            new ParameterizedThreadStart(this.MainLoop).BeginInvoke(state, null, null);
+
+            var task = new Task(MainLoop);
+            task.ContinueWith(this.ExceptionHandler, TaskContinuationOptions.OnlyOnFaulted);
+            task.ContinueWith(this.AfterMainLoop, TaskContinuationOptions.OnlyOnRanToCompletion);
+            task.ConfigureAwait(true);
+            task.Start();
 
             // let's give the main pump some headway to start listening
-            Thread.Sleep(500);
+            // task.Wait(500);
+        }
+
+        private void AfterMainLoop(Task task)
+        {
+            this.LogTrace("AFTER MAIN LOOP");
+            this.Close();
         }
 
 
@@ -116,16 +154,49 @@ namespace BNet.Client
         /// <remarks>Exits the main pump thread politely.</remarks>
         internal void Close()
         {
-            this.LogTrace("SHUTDOWN COMMENCING");
-            this.shutdownLock = new ManualResetEventSlim(false);
-            this.shutdown = true;
+            if (this.disposed)
+            {
+                return;
+            }
 
-            // wait until the main thread is exited
-            this.LogTrace("WAITING FOR THREADS TO EXIT");
-            this.shutdownLock.Wait();
+            this.LogTrace("CLOSE");
 
-            this.LogTrace("SHUTDOWN ACHIEVED - DISPOSING");
+            if (!this.forceShutdown)
+            {
+                var args = new DisconnectedEventArgs();
+
+                if (this.asyncOperation != null)
+                {
+                    this.asyncOperation.Post(this.RaiseDisconnected, args);
+                }
+                else
+                {
+                    this.RaiseDisconnected(args);
+                }
+
+                
+                this.LogTrace("SHUTDOWN COMMENCING");
+                this.shutdown = true;
+
+                if (!this.mainLoopDead)
+                {
+                    this.shutdownLock = new ManualResetEventSlim(false);
+
+                    // wait until the main thread is exited
+                    this.LogTrace("WAITING FOR THREADS TO EXIT");
+                    this.shutdownLock.Wait();
+                }
+
+                this.LogTrace("SHUTDOWN ACHIEVED - DISPOSING");
+            }
+
             this.Dispose();
+        }
+
+
+        private void RaiseDisconnected(object args)
+        {
+            this.OnDisconnected((DisconnectedEventArgs)args);
         }
 
 
@@ -156,6 +227,22 @@ namespace BNet.Client
         }
 
 
+        /// <summary>
+        ///     Raises the <see cref="Disconnected" /> event.
+        /// </summary>
+        /// <param name="e">
+        ///     An <see cref="DisconnectedEventArgs" /> that
+        ///     contains the event data.
+        /// </param>
+        internal void OnDisconnected(DisconnectedEventArgs e)
+        {
+            if (this.Disconnected != null)
+            {
+                this.Disconnected(this, e);
+            }
+        }
+
+
         [HostProtection(Synchronization = true, ExternalThreading = true)]
         internal async Task<ResponseHandler> SendDatagramAsync(IOutboundDatagram dgram)
         {
@@ -177,6 +264,7 @@ namespace BNet.Client
                 this.udpClient.SendAsync(bytes, bytes.Length)
                     .ConfigureAwait(continueOnCapturedContext: false);
             dgram.SentTime = DateTime.Now;
+            this.outCount++;
 
             this.LogTrace("AFTER  await SendDatagramAsync");
 
@@ -192,14 +280,11 @@ namespace BNet.Client
             return handler;
         }
 
-
-        /// <summary>
-        ///     Implement IDisposable.
-        /// </summary>
-        public void Dispose()
+        
+        internal void UpdateMetrics(RConMetrics rConMetrics)
         {
-            this.Dispose(true);
-            GC.SuppressFinalize(this);
+            rConMetrics.InboundPacketCount += this.inCount;
+            rConMetrics.OutboundPacketCount += this.outCount;
         }
 
 
@@ -235,27 +320,14 @@ namespace BNet.Client
         }
 
 
-        [Conditional("TRACE")]
-        private void LogTrace(string msg)
-        {
-            this.Log.Debug(msg);
-        }
-
-
-        [Conditional("TRACE")]
-        private void LogTraceFormat(string fmt, params object[] args)
-        {
-            this.Log.DebugFormat(CultureInfo.InvariantCulture, fmt, args);
-        }
-
-
         /// <summary>
-        ///     The main message loop.
+        ///     The main message pump.
         /// </summary>
-        /// <param name="state">State object.</param>
         [HostProtection(Synchronization = true, ExternalThreading = true)]
-        private void MainLoop(object state)
+        private void MainLoop()
         {
+            // throw new ArgumentException("Test shall not pass.");
+            
             // Check whether the thread has previously been named 
             // to avoid a possible InvalidOperationException. 
             if (Thread.CurrentThread.Name == null)
@@ -269,7 +341,7 @@ namespace BNet.Client
             while (!this.shutdown)
             {
                 this.LogTrace("Scheduling new receive task.");
-                var task = this.ReceiveDatagram();
+                var task = this.ReceiveDatagramAsync();
                 this.LogTrace("AFTER  scheduling new receive task.");
 
                 while (!task.IsCompleted && !this.shutdown)
@@ -279,9 +351,9 @@ namespace BNet.Client
                         var alive = this.SendKeepAlivePacket().Result;
                     }
 
-                    this.LogTraceFormat("BEFORE waiting receive task, Status={0}", task.Status);
-                    task.Wait(1000);
-                    this.LogTraceFormat("AFTER  waiting receive task, Status={0}", task.Status);
+                    this.LogTraceFormat("===== WAITING RECEIVE =====, Status={0}", task.Status);
+                    task.Wait(500);
+                    this.LogTraceFormat("====== DONE WAITING =======, Status={0}", task.Status);
                 }
             }
 
@@ -308,11 +380,15 @@ namespace BNet.Client
 
         private void ExitMainLoop()
         {
-            this.isRunning = false;
+            this.LogTrace("EXIT MAIN LOOP");
+            this.mainLoopDead = true;
 
-            // signal we're exiting the thread
-            this.LogTrace("shutdownLock set.");
-            this.shutdownLock.Set();
+            if (this.shutdownLock != null)
+            {
+                // signal we're exiting the thread
+                this.LogTrace("shutdownLock set.");
+                this.shutdownLock.Set();
+            }
         }
 
 
@@ -321,7 +397,7 @@ namespace BNet.Client
         ///     the RCon server.
         /// </summary>
         [HostProtection(Synchronization = true, ExternalThreading = true)]
-        private async Task ReceiveDatagram()
+        private async Task ReceiveDatagramAsync()
         {
             // ReceiveAsync (BeginRead) will spawn a new thread
             // which blocks head-on against the IO Completion Port
@@ -334,10 +410,26 @@ namespace BNet.Client
                                                 // do not incurr in ANOTHER context switch cost
                                                 .ConfigureAwait(false);
             this.LogTrace("AFTER  await ReceiveAsync");
+            if (!this.ValidateReceivedDatagram(result))
+            {
+                this.LogTrace("INVALID datagram received");
+                return;
+            }
 
             this.lastDgramReceivedTime = DateTime.Now;
             byte dgramType = result.Buffer[Constants.DatagramTypeIndex];
+            this.inCount++;
             this.LogTraceFormat("{0:0}    Type dgram received.", dgramType);
+
+#if DEBUG
+            // shutdown msg from server (used only for testing)
+            if (dgramType == 0xFF)
+            {
+                this.LogTrace("SHUTDOWN DATAGRAM RECEIVED - SHUTTING DOWN.");
+                this.shutdown = true;
+                return;
+            }
+#endif
 
             if (dgramType == (byte)DatagramType.Message)
             {
@@ -356,6 +448,16 @@ namespace BNet.Client
             {
                 await this.DispatchReceivedMessage(dgram);
             }
+        }
+
+
+        private bool ValidateReceivedDatagram(UdpReceiveResult result)
+        {
+            if (result.Buffer == null || result.Buffer.Length < 7)
+            {
+                return false;
+            }
+            return true;
         }
 
 
@@ -431,5 +533,42 @@ namespace BNet.Client
         {
             this.OnMessageReceived((MessageReceivedEventArgs)args);
         }
+
+
+        private void ExceptionHandler(Task task)
+        {
+            var exInfo = ExceptionDispatchInfo.Capture(task.Exception);
+            this.forceShutdown = true;
+            exInfo.Throw();
+        }
+
+
+        [Conditional("TRACE")]
+        private void LogTrace(string msg)
+        {
+            this.Log.Logger.Log(
+                this.Log.GetType(),
+                Level.Debug,
+                msg,
+                null);
+        }
+
+
+        [Conditional("TRACE")]
+        private void LogTraceFormat(string fmt, params object[] args)
+        {
+            this.Log.Logger.Log(
+                this.Log.GetType(),
+                Level.Debug,
+                string.Format(CultureInfo.InvariantCulture, fmt, args),
+                null);
+        }
+
+
+    }
+
+
+    public class DisconnectedEventArgs : EventArgs
+    {
     }
 }

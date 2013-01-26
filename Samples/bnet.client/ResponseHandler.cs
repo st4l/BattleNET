@@ -4,6 +4,7 @@
 namespace BNet.Client
 {
     using System;
+    using System.Security.Permissions;
     using System.Threading;
     using System.Threading.Tasks;
     using BNet.Client.Datagrams;
@@ -11,7 +12,7 @@ namespace BNet.Client
 
     public class ResponseHandler : IDisposable
     {
-        private readonly ManualResetEventSlim waitHandle;
+        private ManualResetEventSlim waitHandle;
 
         private bool disposed = false;
 
@@ -24,7 +25,6 @@ namespace BNet.Client
         public ResponseHandler(IOutboundDatagram sentDatagram)
         {
             this.SentDatagram = sentDatagram;
-            this.waitHandle = new ManualResetEventSlim(false);
         }
 
 
@@ -67,8 +67,15 @@ namespace BNet.Client
         /// <returns>
         ///     True if the response was received; otherwise, false.
         /// </returns>
+        [HostProtection(Synchronization = true, ExternalThreading = true)]
         public Task<bool> WaitForResponse(int timeout)
         {
+            if (this.ResponseDatagram != null)
+            {
+                return Task.FromResult(true);
+            }
+
+            this.waitHandle = new ManualResetEventSlim(false);
             var task = Task.Factory.StartNew(() => this.waitHandle.Wait(timeout));
             task.ConfigureAwait(false);
             return task;
@@ -95,10 +102,14 @@ namespace BNet.Client
         ///     thread to continue.
         /// </summary>
         /// <param name="result"></param>
+        [HostProtection(Synchronization = true, ExternalThreading = true)]
         internal void Return(IInboundDatagram result)
         {
             this.ResponseDatagram = result;
-            this.waitHandle.Set();
+            if (this.waitHandle != null)
+            {
+                this.waitHandle.Set();
+            }
         }
 
 

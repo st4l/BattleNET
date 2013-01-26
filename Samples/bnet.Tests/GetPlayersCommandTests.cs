@@ -43,16 +43,17 @@
 
 
         [TestMethod]
+        [TestCategory("Correctness")]
         public void TestParseResponse()
         {
             var cmd = new GetPlayersCommand();
             cmd.Log = DebugLogger.GetLogger(typeof(GetPlayersCommand));
 
             var accessor = new PrivateObject(cmd);
-            accessor.SetField("RawResponse", TestResponse1);
-            accessor.Invoke("ParseResponse");
+            object result = accessor.Invoke("ParseResponse", TestResponse1);
 
-            Assert.IsNotNull(cmd.Result);
+
+            Assert.IsNotNull(result);
         }
     }
 }

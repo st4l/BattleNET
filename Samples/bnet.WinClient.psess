@@ -67,20 +67,6 @@
       <ProjName>bnet.WinClient</ProjName>
     </ProjBinary>
   </Binaries>
-  <Reports>
-    <Report>
-      <Path>bnet.WinClient130123.vsp</Path>
-    </Report>
-    <Report>
-      <Path>bnet.WinClient130123(1).vsp</Path>
-    </Report>
-    <Report>
-      <Path>bnet.WinClient130123(2).vsp</Path>
-    </Report>
-    <Report>
-      <Path>bnet.WinClient130123(3).vsp</Path>
-    </Report>
-  </Reports>
   <Launches>
     <ProjBinary>
       <Path>:PB:{E39F91F7-608D-48F8-B27C-3E4ACB85FA6C}|bnet.WinClient\bnet.WinClient.csproj</Path>

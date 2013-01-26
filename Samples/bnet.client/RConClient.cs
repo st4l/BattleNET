@@ -9,9 +9,11 @@ namespace BNet.Client
     using System.Net.Sockets;
     using System.Runtime.ExceptionServices;
     using System.Security.Authentication;
+    using System.Threading;
     using System.Threading.Tasks;
     using BNet.Client.Datagrams;
     using log4net;
+    using log4net.Core;
 
 
     /// <summary>
@@ -50,26 +52,37 @@ namespace BNet.Client
 
         private readonly OutboundDatagramQueue outboundQueue = new OutboundDatagramQueue();
 
-        private readonly UdpClient udpClient;
-
         private MessageDispatcher msgDispatcher;
 
         private bool closed;
 
         private bool disposed = false;
 
+        private readonly object msgReceivedLockObject = new object();
+
         private EventHandler<MessageReceivedEventArgs> subscribedMsgReceivedHandler;
 
+        internal RConMetrics Metrics { get; set; }
+
+        internal IUdpClient Client { get; set; }
+
+        private ILog Log { get; set; }
+
+#if DEBUG
+        // will block until this client shuts down
+        private ManualResetEvent runningLock = new ManualResetEvent(false);
+#endif
 
         public RConClient(string host, int port, string password)
         {
             this.host = host;
             this.port = port;
+
             this.password = password;
-            UdpClient client = null;
+            NetUdpClient client = null;
             try
             {
-                client = new UdpClient(this.host, this.port)
+                client = new NetUdpClient(this.host, this.port)
                                  {
                                      DontFragment = true,
                                      EnableBroadcast = false,
@@ -82,8 +95,17 @@ namespace BNet.Client
                 var nex = ExceptionDispatchInfo.Capture(ex);
                 nex.Throw();
             }
-            this.udpClient = client;
-            this.Log = LogManager.GetLogger(this.GetType());
+            this.Client = client;
+            this.Initialize();
+        }
+
+
+        internal RConClient(IUdpClient client, string password)
+        {
+            //throw new ArgumentException("asdf");
+            this.Client = client;
+            this.password = password;
+            this.Initialize();
         }
 
 
@@ -148,8 +170,6 @@ namespace BNet.Client
 
         private event EventHandler<MessageReceivedEventArgs> MsgReceived;
 
-        private object msgReceivedLockObject = new object();
-
 
         /// <summary>
         ///     Gets or sets a <see cref="bool" /> value that specifies
@@ -175,8 +195,6 @@ namespace BNet.Client
             set { this.msgDispatcher.DiscardConsoleMessages = value; }
         }
 
-        private ILog Log { get; set; }
-
 
         /// <summary>
         ///     Registers with the established remote Battleye RCon server
@@ -195,6 +213,7 @@ namespace BNet.Client
                     "RConClient", "This RConClient has been disposed.");
             }
 
+            int x = 7;
             this.StartListening();
 
             var loggedIn = false;
@@ -223,6 +242,7 @@ namespace BNet.Client
         public void Close()
         {
             this.StopListening();
+            this.Metrics.StopCollecting();
             this.closed = true;
             this.Dispose();
         }
@@ -237,6 +257,12 @@ namespace BNet.Client
             GC.SuppressFinalize(this);
         }
 
+
+        private void Initialize()
+        {
+            this.Log = LogManager.GetLogger(this.GetType());
+            this.Metrics = new RConMetrics();
+        }
 
         /// <summary>
         ///     Dispose managed and unmanaged resources.
@@ -260,9 +286,9 @@ namespace BNet.Client
                         this.msgDispatcher.Close();
                     }
 
-                    if (this.udpClient != null)
+                    if (this.Client != null)
                     {
-                        this.udpClient.Close();
+                        this.Client.Close();
                     }
                 }
 
@@ -275,14 +301,22 @@ namespace BNet.Client
         [Conditional("TRACE")]
         private void LogTrace(string msg)
         {
-            this.Log.Debug(msg);
+            this.Log.Logger.Log(
+                this.Log.GetType(),
+                Level.Trace,
+                msg,
+                null);
         }
 
 
         [Conditional("TRACE")]
         private void LogTraceFormat(string fmt, params object[] args)
         {
-            this.Log.DebugFormat(CultureInfo.InvariantCulture, fmt, args);
+            this.Log.Logger.Log(
+                this.Log.GetType(),
+                Level.Trace,
+                string.Format(CultureInfo.InvariantCulture, fmt, args),
+                null);
         }
 
 
@@ -313,21 +347,58 @@ namespace BNet.Client
             this.LogTrace("       LOGIN SUCCESS");
             return result.Success;
         }
-
+         
 
         private void StartListening()
         {
-            this.msgDispatcher = new MessageDispatcher(this.udpClient);
+            this.msgDispatcher = new MessageDispatcher(this.Client);
             this.subscribedMsgReceivedHandler = this.MsgReceived;
             this.msgDispatcher.MessageReceived += this.subscribedMsgReceivedHandler;
+            this.msgDispatcher.Disconnected += MsgDispatcherOnDisconnected;
             this.msgDispatcher.Start();
+        }
+
+
+        private void MsgDispatcherOnDisconnected(object sender, DisconnectedEventArgs e)
+        {
+            this.StopListening();
+#if DEBUG
+            this.runningLock.Set();
+#endif
+            this.OnDisconnected(e);
+        }
+
+#if DEBUG
+        internal void WaitUntilShutdown()
+        {
+            this.runningLock.WaitOne();
+        }
+#endif
+
+        public event EventHandler<DisconnectedEventArgs> Disconnected;
+
+        public void OnDisconnected(DisconnectedEventArgs e)
+        {
+            if (this.Disconnected != null)
+            {
+                this.Disconnected(this, e);
+            }
         }
 
 
         private void StopListening()
         {
-            this.msgDispatcher.MessageReceived -= this.subscribedMsgReceivedHandler;
+            if (this.msgDispatcher == null)
+            {
+                return;
+            }
+            if (this.subscribedMsgReceivedHandler != null)
+            {
+                this.msgDispatcher.MessageReceived -= this.subscribedMsgReceivedHandler;
+            }
+            this.msgDispatcher.Disconnected -= this.MsgDispatcherOnDisconnected;
             this.subscribedMsgReceivedHandler = null;
+            this.msgDispatcher.UpdateMetrics(this.Metrics);
             this.msgDispatcher.Close(); // disposes
             this.msgDispatcher = null;
         }

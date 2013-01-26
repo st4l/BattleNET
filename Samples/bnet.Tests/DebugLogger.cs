@@ -11,10 +11,7 @@
     {
         static DebugLogger()
         {
-            var appender = new DebugAppender();
-            appender.Layout = new PatternLayout("%-5level %date{HH:mm:ss} - %message%newline");
-
-            BasicConfigurator.Configure(appender);
+            
         }
 
 

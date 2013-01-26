@@ -12,7 +12,7 @@ namespace BNet.Client
     using System.Security.Permissions;
     using System.Threading;
     using System.Threading.Tasks;
-    using BNet.Client.Datagrams;
+    using Datagrams;
     using log4net;
     using log4net.Core;
 
@@ -36,7 +36,7 @@ namespace BNet.Client
 
         private bool hasStarted;
 
-        private bool disposed = false;
+        private bool disposed;
 
         private AsyncOperation asyncOperation;
 
@@ -46,9 +46,11 @@ namespace BNet.Client
 
         private int outCount;
 
-        private bool forceShutdown = false;
+        private bool forceShutdown;
 
         private bool mainLoopDead;
+        private int parsedDatagramsCount;
+        private int dispatchedConsoleMessages;
 
         private ILog Log { get; set; }
 
@@ -128,7 +130,6 @@ namespace BNet.Client
 
             this.hasStarted = true;
 
-            var state = new object();
             this.asyncOperation = AsyncOperationManager.CreateOperation(null);
 
             var task = new Task(MainLoop);
@@ -140,6 +141,7 @@ namespace BNet.Client
             // let's give the main pump some headway to start listening
             // task.Wait(500);
         }
+
 
         private void AfterMainLoop(Task task)
         {
@@ -285,6 +287,8 @@ namespace BNet.Client
         {
             rConMetrics.InboundPacketCount += this.inCount;
             rConMetrics.OutboundPacketCount += this.outCount;
+            rConMetrics.ParsedDatagramsCount += this.parsedDatagramsCount;
+            rConMetrics.DispatchedConsoleMessages += this.dispatchedConsoleMessages;
         }
 
 
@@ -336,15 +340,15 @@ namespace BNet.Client
             }
 
             var keepAlivePeriod = TimeSpan.FromSeconds(25);
+            this.lastCmdSentTime = DateTime.Now.AddSeconds(-10);
 
-            this.lastCmdSentTime = DateTime.Now.AddSeconds(10);
             while (!this.shutdown)
             {
                 this.LogTrace("Scheduling new receive task.");
                 var task = this.ReceiveDatagramAsync();
                 this.LogTrace("AFTER  scheduling new receive task.");
 
-                while (!task.IsCompleted && !this.shutdown)
+                do
                 {
                     if (DateTime.Now - this.lastCmdSentTime > keepAlivePeriod)
                     {
@@ -355,8 +359,10 @@ namespace BNet.Client
                     task.Wait(500);
                     this.LogTraceFormat("====== DONE WAITING =======, Status={0}", task.Status);
                 }
+                while (!task.IsCompleted && !this.shutdown);
             }
-
+            
+            this.mainLoopDead = true;
             this.LogTrace("Main loop exited.");
 
             // signal we're exiting the thread
@@ -381,7 +387,6 @@ namespace BNet.Client
         private void ExitMainLoop()
         {
             this.LogTrace("EXIT MAIN LOOP");
-            this.mainLoopDead = true;
 
             if (this.shutdownLock != null)
             {
@@ -469,6 +474,7 @@ namespace BNet.Client
         /// </param>
         private async Task DispatchReceivedMessage(IInboundDatagram dgram)
         {
+            this.parsedDatagramsCount++;
             if (dgram != null)
             {
                 if (dgram.Type == DatagramType.Message)
@@ -526,6 +532,7 @@ namespace BNet.Client
             {
                 this.RaiseMessageReceived(args);
             }
+            this.dispatchedConsoleMessages++;
         }
 
 
@@ -563,12 +570,5 @@ namespace BNet.Client
                 string.Format(CultureInfo.InvariantCulture, fmt, args),
                 null);
         }
-
-
-    }
-
-
-    public class DisconnectedEventArgs : EventArgs
-    {
     }
 }

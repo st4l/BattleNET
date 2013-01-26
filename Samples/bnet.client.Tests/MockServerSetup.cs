@@ -28,12 +28,13 @@ namespace bnet.client.Tests
         public bool LoginServerDown { get; set; }
         public bool LoginAtThirdTry { get; set; }
         public bool LoginSlow { get; set; }
+        public bool CorruptConsoleMessages { get; set; }
 
         public bool LoadTestOnly { get; set; }
         public int LoadTestConsoleMessages { get; set; }
 
         public bool OnlyLogin { get; set; }
 
-
+        public bool KeepAliveOnly { get; set; }
     }
 }

@@ -1,17 +1,17 @@
 ﻿// ----------------------------------------------------------------------------------------------------
 // <copyright file="RConClient.cs" company="Me">Copyright (c) 2012 St4l.</copyright>
 // ----------------------------------------------------------------------------------------------------
+
 namespace BNet.Client
 {
     using System;
     using System.Diagnostics;
     using System.Globalization;
-    using System.Net.Sockets;
     using System.Runtime.ExceptionServices;
     using System.Security.Authentication;
     using System.Threading;
     using System.Threading.Tasks;
-    using BNet.Client.Datagrams;
+    using Datagrams;
     using log4net;
     using log4net.Core;
 
@@ -50,15 +50,13 @@ namespace BNet.Client
 
         private readonly string password;
 
-        private readonly OutboundDatagramQueue outboundQueue = new OutboundDatagramQueue();
-
         private MessageDispatcher msgDispatcher;
 
         private bool closed;
 
-        private bool disposed = false;
+        private bool disposed;
 
-        private readonly object msgReceivedLockObject = new object();
+        private readonly object msgReceivedEventAccesorsLockObject = new object();
 
         private EventHandler<MessageReceivedEventArgs> subscribedMsgReceivedHandler;
 
@@ -70,8 +68,9 @@ namespace BNet.Client
 
 #if DEBUG
         // will block until this client shuts down
-        private ManualResetEvent runningLock = new ManualResetEvent(false);
+        private readonly ManualResetEvent runningLock = new ManualResetEvent(false);
 #endif
+
 
         public RConClient(string host, int port, string password)
         {
@@ -83,15 +82,18 @@ namespace BNet.Client
             try
             {
                 client = new NetUdpClient(this.host, this.port)
-                                 {
-                                     DontFragment = true,
-                                     EnableBroadcast = false,
-                                     MulticastLoopback = false
-                                 };
+                             {
+                                 DontFragment = true,
+                                 EnableBroadcast = false,
+                                 MulticastLoopback = false
+                             };
             }
             catch (Exception ex)
             {
-                client.Close();
+                if (client != null)
+                {
+                    client.Close();
+                }
                 var nex = ExceptionDispatchInfo.Capture(ex);
                 nex.Throw();
             }
@@ -137,7 +139,7 @@ namespace BNet.Client
         {
             add
             {
-                lock (this.msgReceivedLockObject)
+                lock (this.msgReceivedEventAccesorsLockObject)
                 {
                     this.MsgReceived += value;
                     if (this.subscribedMsgReceivedHandler == null)
@@ -153,7 +155,7 @@ namespace BNet.Client
 
             remove
             {
-                lock (this.msgReceivedLockObject)
+                lock (this.msgReceivedEventAccesorsLockObject)
                 {
                     this.MsgReceived -= value;
                     if (this.subscribedMsgReceivedHandler == null)
@@ -189,11 +191,7 @@ namespace BNet.Client
         ///     console message datagrams received (the <see cref="MessageReceived" />
         ///     event is never raised).
         /// </summary>
-        public bool DiscardConsoleMessages
-        {
-            get { return this.msgDispatcher.DiscardConsoleMessages; }
-            set { this.msgDispatcher.DiscardConsoleMessages = value; }
-        }
+        public bool DiscardConsoleMessages { get; set; }
 
 
         /// <summary>
@@ -213,7 +211,6 @@ namespace BNet.Client
                     "RConClient", "This RConClient has been disposed.");
             }
 
-            int x = 7;
             this.StartListening();
 
             var loggedIn = false;
@@ -263,6 +260,7 @@ namespace BNet.Client
             this.Log = LogManager.GetLogger(this.GetType());
             this.Metrics = new RConMetrics();
         }
+
 
         /// <summary>
         ///     Dispose managed and unmanaged resources.
@@ -347,11 +345,12 @@ namespace BNet.Client
             this.LogTrace("       LOGIN SUCCESS");
             return result.Success;
         }
-         
+
 
         private void StartListening()
         {
-            this.msgDispatcher = new MessageDispatcher(this.Client);
+            this.msgDispatcher = new MessageDispatcher(this.Client)
+                                     {DiscardConsoleMessages = this.DiscardConsoleMessages};
             this.subscribedMsgReceivedHandler = this.MsgReceived;
             this.msgDispatcher.MessageReceived += this.subscribedMsgReceivedHandler;
             this.msgDispatcher.Disconnected += MsgDispatcherOnDisconnected;
@@ -368,6 +367,7 @@ namespace BNet.Client
             this.OnDisconnected(e);
         }
 
+
 #if DEBUG
         internal void WaitUntilShutdown()
         {
@@ -376,6 +376,7 @@ namespace BNet.Client
 #endif
 
         public event EventHandler<DisconnectedEventArgs> Disconnected;
+
 
         public void OnDisconnected(DisconnectedEventArgs e)
         {

@@ -2,11 +2,9 @@
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
-using System.Net;
 using System.Net.Sockets;
 using System.Text;
 using System.Threading;
-using System.Threading.Tasks;
 using BNet.Client.Datagrams;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
@@ -14,18 +12,19 @@ namespace bnet.client.Tests
 {
     public class MockServer
     {
-        private readonly MockServerSetup setup;
         private readonly int avgResponseTime;
 
-        private ConcurrentQueue<byte[]> OutboundQueue = new ConcurrentQueue<byte[]>();
-        private bool shutdown;
-
-        private int loginAttempts;
-        private bool clientLoggedIn = false;
+        private readonly ConcurrentQueue<byte[]> outboundQueue = new ConcurrentQueue<byte[]>();
+        private readonly List<TestDatagram> receivedDatagrams = new List<TestDatagram>();
+        private readonly MockServerSetup setup;
+        private int ackPacketsReceivedCount;
+        private bool clientLoggedIn;
 
         private byte conMsgSequenceNum;
-
-        public List<TestDatagram> receivedDatagrams = new List<TestDatagram>();
+        private int keepAlivePacketsReceivedCount;
+        private int loginAttempts;
+        private bool shutdown;
+        private int totalConMsgsGenerated;
 
 
         public MockServer(MockServerSetup setup)
@@ -37,38 +36,81 @@ namespace bnet.client.Tests
 
         public UdpReceiveResult SendPacket()
         {
-            bool sent = false;
+            var spinWait = new SpinWait();
             while (!this.shutdown && DateTime.Now < this.setup.ShutdownServerTime)
             {
-                Thread.Sleep(this.avgResponseTime);
-                if (!setup.LoginServerDown && this.OutboundQueue.Count > 0)
+                // wait once
+                if (this.avgResponseTime > 0)
                 {
-                    byte[] peekBytes;
-                    if (this.OutboundQueue.TryPeek(out peekBytes))
+                    Thread.Sleep(this.avgResponseTime);
+                }
+                else
+                {
+                    spinWait.SpinOnce();
+                }
+
+                // if this server should be down, keep looping
+                if (this.setup.LoginServerDown)
+                {
+                    continue;
+                }
+
+
+                // if we have outbound packets to send, send the first one
+                byte[] sendBytes;
+                if (this.outboundQueue.TryDequeue(out sendBytes))
+                {
+                    if (sendBytes[7] == 0xFF)
                     {
-                        if (peekBytes[7] == 0xFF)
-                        {
-                            this.shutdown = true;
-                            return new UdpReceiveResult(peekBytes, this.setup.ServerEndpoint);
-                        }
-                        byte[] sendBytes;
-                        while (!this.OutboundQueue.TryDequeue(out sendBytes))
-                        {
-                        }
-                        return new UdpReceiveResult(sendBytes, this.setup.ServerEndpoint);
+                        this.shutdown = true;
                     }
+                    return new UdpReceiveResult(sendBytes, this.setup.ServerEndpoint);
+                }
+
+                // else, check if we need to send dummy console messages for load testing
+                byte[] loadTestMsg = this.CheckSendLoadTestMsg();
+                if (loadTestMsg != null)
+                {
+                    return new UdpReceiveResult(loadTestMsg, this.setup.ServerEndpoint);
                 }
             }
 
-            // Done sending packets for this test
-            Thread.Sleep(Timeout.Infinite);
-            return new UdpReceiveResult(new byte[0], this.setup.ServerEndpoint);
+            // shutting down, we're done sending packets for this test
+            this.shutdown = true;
+            byte[] shutdownPacket = this.BuildShutdownPacket();
+            return new UdpReceiveResult(shutdownPacket, this.setup.ServerEndpoint); // EOF
         }
 
-        
+
+        private byte[] BuildShutdownPacket()
+        {
+            var shutdownPayload = new byte[2];
+            Buffer.SetByte(shutdownPayload, 0, 0xFF);
+            Buffer.SetByte(shutdownPayload, 1, 0xFF);
+            return this.BuildOutboundPacket(shutdownPayload);
+        }
+
+
+        private byte[] CheckSendLoadTestMsg()
+        {
+            if (this.setup.LoadTestConsoleMessages == -1 ||
+                this.totalConMsgsGenerated < this.setup.LoadTestConsoleMessages)
+            {
+                return this.GenerateRandomConsoleMessage();
+            }
+
+            if (this.setup.LoadTestConsoleMessages > 0 &&
+                this.setup.LoadTestOnly)
+            {
+                return this.BuildShutdownPacket();
+            }
+            return null;
+        }
+
+
         public int ReceivePacket(byte[] bytes, int length)
         {
-            var payload = ValidateInboundHeader(bytes, length);
+            byte[] payload = ValidateInboundHeader(bytes, length);
 
             byte type = Buffer.GetByte(payload, 1);
             Assert.IsTrue(type <= 2);
@@ -101,6 +143,15 @@ namespace bnet.client.Tests
         }
 
 
+        public RConServerMetrics GetMetrics()
+        {
+            return new RConServerMetrics
+                       {
+                           AckPacketsReceived = this.ackPacketsReceivedCount,
+                           KeepAlivePacketsReceived = this.keepAlivePacketsReceivedCount,
+                           TotalConsoleMessagesGenerated = this.totalConMsgsGenerated
+                       };
+        }
 
 
         private static byte[] ValidateInboundHeader(byte[] bytes, int length)
@@ -137,13 +188,13 @@ namespace bnet.client.Tests
 
         private void ReceiveLoginPacket(byte[] payload)
         {
-            loginAttempts++;
+            this.loginAttempts++;
             string recvdPass = Encoding.ASCII.GetString(payload, 2, payload.Length - 2);
 
             if (this.setup.LoginAtThirdTry)
             {
                 // remain mute unless this is the third login attempt
-                if (loginAttempts < 3)
+                if (this.loginAttempts < 3)
                 {
                     return;
                 }
@@ -156,42 +207,31 @@ namespace bnet.client.Tests
             {
                 // Logged in
                 Buffer.SetByte(outPayload, 2, 0x01);
-                this.OutboundQueue.Enqueue(this.BuildOutboundPacket(outPayload));
+                this.outboundQueue.Enqueue(this.BuildOutboundPacket(outPayload));
                 this.LoggedIn();
             }
             else
             {
                 Buffer.SetByte(outPayload, 2, 0x00);
-                this.OutboundQueue.Enqueue(this.BuildOutboundPacket(outPayload));
+                this.outboundQueue.Enqueue(this.BuildOutboundPacket(outPayload));
             }
             if (this.setup.OnlyLogin)
             {
                 this.SendShutdownPacket();
             }
-
         }
+
 
         private void LoggedIn()
         {
             this.clientLoggedIn = true;
-            for (int i = 0; i < this.setup.LoadTestConsoleMessages; i++)
-			{
-                this.OutboundQueue.Enqueue(this.GenerateRandomConsoleMessage());
-			}
-            if (this.setup.LoadTestOnly)
-            {
-                this.SendShutdownPacket();
-            }
         }
 
 
         private void SendShutdownPacket()
         {
-            var shutdownPayload = new byte[2];
-            Buffer.SetByte(shutdownPayload, 0, 0xFF);
-            Buffer.SetByte(shutdownPayload, 1, 0xFF);
-
-            this.OutboundQueue.Enqueue(this.BuildOutboundPacket(shutdownPayload));  // EOF
+            byte[] shutdownPacket = this.BuildShutdownPacket();
+            this.outboundQueue.Enqueue(shutdownPacket); // EOF
         }
 
 
@@ -205,14 +245,13 @@ namespace bnet.client.Tests
 
             var random = new Random(3452445);
             for (int i = 3; i < 500; i++)
-			{
+            {
                 Buffer.SetByte(payload, i, (byte)random.Next(33, 168));
-			}
+            }
             this.totalConMsgsGenerated++;
-            return this.BuildOutboundPacket(payload);
+            return this.BuildOutboundPacket(payload, this.setup.CorruptConsoleMessages);
         }
 
-        private int totalConMsgsGenerated;
 
         private void IncrementConMsgSequenceNum()
         {
@@ -228,26 +267,38 @@ namespace bnet.client.Tests
                 Assert.AreEqual(payload[0], (byte)0xFF);
                 Assert.AreEqual(payload[1], (byte)0x01);
                 // payload[2] seqNum
+                this.keepAlivePacketsReceivedCount++;
+                if (this.setup.KeepAliveOnly)
+                {
+                    this.shutdown = true;
+                }
             }
         }
 
 
         private void ReceiveAcknowledgePacket(byte[] payload)
         {
-            
+            this.ackPacketsReceivedCount++;
         }
 
 
-        private byte[] BuildOutboundPacket(byte[] payload)
+        private byte[] BuildOutboundPacket(byte[] payload, bool corrupted = false)
         {
             byte[] checksum;
-            using (var crc = new Crc32(Crc32.DefaultPolynomialReversed, Crc32.DefaultSeed))
+            if (corrupted)
             {
-                checksum = crc.ComputeHash(payload);
-                Array.Reverse(checksum);
+                checksum = new byte[] { 0x34, 0x78, 0xF2, 0xC1 };
+            }
+            else
+            {
+                using (var crc = new Crc32(Crc32.DefaultPolynomialReversed, Crc32.DefaultSeed))
+                {
+                    checksum = crc.ComputeHash(payload);
+                    Array.Reverse(checksum);
+                }
             }
 
-            var payloadLen = Buffer.ByteLength(payload);
+            int payloadLen = Buffer.ByteLength(payload);
             var result = new byte[6 + payloadLen];
             Buffer.SetByte(result, 0, 0x42); // "B"
             Buffer.SetByte(result, 1, 0x45); // "E"
@@ -256,7 +307,5 @@ namespace bnet.client.Tests
 
             return result;
         }
-
-
     }
 }

@@ -1,11 +1,12 @@
 ﻿// ----------------------------------------------------------------------------------------------------
 // <copyright file="InboundDatagramBase.cs" company="Me">Copyright (c) 2012 St4l.</copyright>
 // ----------------------------------------------------------------------------------------------------
+
+using System;
+using System.Linq;
+
 namespace BNet.Client.Datagrams
 {
-    using System;
-
-
     public abstract class InboundDatagramBase : DatagramBase, IInboundDatagram
     {
         /// <summary>The inbound datagram base.</summary>
@@ -15,13 +16,20 @@ namespace BNet.Client.Datagrams
         }
 
 
+        #region IInboundDatagram Members
+
         public DateTime Timestamp { get; private set; }
+
+        #endregion
+
 
         /// <summary>
         ///     Parses received bytes from a BattlEye RCon server.
         /// </summary>
         /// <param name="buffer">The received bytes.</param>
-        /// <returns>An <see cref="IInboundDatagram"/> containing the received information.</returns>
+        /// <returns>
+        ///     An <see cref="IInboundDatagram"/> containing the received information,
+        ///     or null if the checksum validation failed.</returns>
         /// <remarks>
         /// The RCon protocol specification for incoming packets:
         /// 
@@ -61,6 +69,11 @@ namespace BNet.Client.Datagrams
                 throw new ArgumentNullException("buffer");
             }
 
+            if (!VerifyCrc(buffer))
+            {
+                return null;
+            }
+
             var type = (DatagramType)buffer[Constants.DatagramTypeIndex];
             switch (type)
             {
@@ -73,6 +86,25 @@ namespace BNet.Client.Datagrams
                 default:
                     throw new ArgumentOutOfRangeException("buffer");
             }
+        }
+
+
+        private static bool VerifyCrc(byte[] buffer)
+        {
+            int payloadLength = Buffer.ByteLength(buffer) - 6;
+            var payload = new byte[payloadLength];
+            Buffer.BlockCopy(buffer, 6, payload, 0, payloadLength);
+            byte[] computedChecksum;
+            using (var crc = new Crc32(Crc32.DefaultPolynomialReversed, Crc32.DefaultSeed))
+            {
+                computedChecksum = crc.ComputeHash(payload);
+                Array.Reverse(computedChecksum);
+            }
+
+            var originalChecksum = new byte[4];
+            Buffer.BlockCopy(buffer, 2, originalChecksum, 0, 4);
+
+            return computedChecksum.SequenceEqual(originalChecksum);
         }
     }
 }

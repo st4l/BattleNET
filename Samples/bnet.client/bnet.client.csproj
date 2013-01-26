@@ -65,6 +65,7 @@
     <Compile Include="Datagrams\IOutboundDatagram.cs" />
     <Compile Include="Datagrams\LoginDatagram.cs" />
     <Compile Include="Datagrams\LoginResponseDatagram.cs" />
+    <Compile Include="DisconnectedEventArgs.cs" />
     <Compile Include="GlobalSuppressions.cs" />
     <Compile Include="IUdpClient.cs" />
     <Compile Include="MessageDispatcher.cs" />

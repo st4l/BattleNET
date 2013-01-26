@@ -18,6 +18,9 @@ namespace BNet.Client
         public TimeSpan TotalRunTime { get; set; }
         public int InboundPacketCount { get; set; }
         public int OutboundPacketCount { get; set; }
+        public int ParsedDatagramsCount { get; set; }
+        public int DispatchedConsoleMessages { get; set; }
+
 
         public void StopCollecting()
         {

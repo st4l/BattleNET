@@ -78,6 +78,7 @@
     <Compile Include="MockUdpClient.cs" />
     <Compile Include="RConClientTests.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="RConServerMetrics.cs" />
     <Compile Include="TestDatagram.cs" />
   </ItemGroup>
   <ItemGroup>

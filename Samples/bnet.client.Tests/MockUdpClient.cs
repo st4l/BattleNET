@@ -11,9 +11,11 @@ namespace bnet.client.Tests
 {
     public class MockUdpClient : UdpClient, IUdpClient
     {
-        private MockServerSetup serverSetup;
         public MockServer Server { get; set; }
-        
+
+        public MockServerSetup ServerSetup { get; private set; }
+
+
         public MockUdpClient()
         {
         }
@@ -22,7 +24,7 @@ namespace bnet.client.Tests
         internal void Setup(MockServerSetup setup)
         {
             this.Server = new MockServer(setup);
-            this.serverSetup = setup;
+            this.ServerSetup = setup;
         }
 
 

@@ -22,6 +22,7 @@ namespace BNet.Client.Datagrams
         private readonly uint[] table;
 
         private uint hash;
+        private static uint[] defaultTableReversed;
 
 
         public Crc32()
@@ -74,6 +75,11 @@ namespace BNet.Client.Datagrams
                 return defaultTable;
             }
 
+            if (polynomial == DefaultPolynomialReversed && defaultTableReversed != null)
+            {
+                return defaultTableReversed;
+            }
+
             var createTable = new uint[256];
             for (int i = 0; i < 256; i++)
             {
@@ -96,6 +102,11 @@ namespace BNet.Client.Datagrams
             if (polynomial == DefaultPolynomial)
             {
                 defaultTable = createTable;
+            }
+
+            if (polynomial == DefaultPolynomialReversed)
+            {
+                defaultTableReversed = createTable;
             }
 
             return createTable;

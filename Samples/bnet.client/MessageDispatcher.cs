@@ -1,22 +1,22 @@
 ﻿// ----------------------------------------------------------------------------------------------------
 // <copyright file="MessageDispatcher.cs" company="Me">Copyright (c) 2012 St4l.</copyright>
 // ----------------------------------------------------------------------------------------------------
+
+using System;
+using System.ComponentModel;
+using System.Diagnostics;
+using System.Globalization;
+using System.Net.Sockets;
+using System.Runtime.ExceptionServices;
+using System.Security.Permissions;
+using System.Threading;
+using System.Threading.Tasks;
+using BNet.Client.Datagrams;
+using log4net;
+using log4net.Core;
+
 namespace BNet.Client
 {
-    using System;
-    using System.ComponentModel;
-    using System.Diagnostics;
-    using System.Globalization;
-    using System.Net.Sockets;
-    using System.Runtime.ExceptionServices;
-    using System.Security.Permissions;
-    using System.Threading;
-    using System.Threading.Tasks;
-    using Datagrams;
-    using log4net;
-    using log4net.Core;
-
-
     /// <summary>
     ///     Receives messages from a remote Battleye RCon server
     ///     using the supplied <see cref="UdpClient" /> and
@@ -26,33 +26,24 @@ namespace BNet.Client
     {
         private readonly ResponseMessageDispatcher responseDispatcher;
 
-        private IUdpClient udpClient;
-
-        private bool shutdown;
-
-        private DateTime lastDgramReceivedTime;
-
-        private ManualResetEventSlim shutdownLock;
-
-        private bool hasStarted;
-
+        private AsyncOperation asyncOperation;
+        private int dispatchedConsoleMessages;
         private bool disposed;
 
-        private AsyncOperation asyncOperation;
-
-        private DateTime lastCmdSentTime;
-
-        private int inCount;
-
-        private int outCount;
-
         private bool forceShutdown;
+        private bool hasStarted;
+        private int inCount;
+        private DateTime lastCmdSentTime;
+        private DateTime lastDgramReceivedTime;
 
         private bool mainLoopDead;
+        private int outCount;
         private int parsedDatagramsCount;
-        private int dispatchedConsoleMessages;
+        private bool shutdown;
+        private ManualResetEventSlim shutdownLock;
+        private IUdpClient udpClient;
+        private SequenceTracker conMsgsTracker = new SequenceTracker();
 
-        private ILog Log { get; set; }
 
         /// <summary>
         ///     Initializes a new instance of <see cref="MessageDispatcher" />
@@ -71,6 +62,31 @@ namespace BNet.Client
         }
 
 
+        private ILog Log { get; set; }
+
+        /// <summary>
+        ///     Gets or sets a <see cref="Boolean" /> value that specifies
+        ///     whether this <see cref="MessageDispatcher" /> discards all
+        ///     console message datagrams received (the <see cref="MessageReceived" />
+        ///     event is never raised).
+        /// </summary>
+        internal bool DiscardConsoleMessages { get; set; }
+
+
+        #region IDisposable Members
+
+        /// <summary>
+        ///     Implement IDisposable.
+        /// </summary>
+        public void Dispose()
+        {
+            this.Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
+        #endregion
+
+
         /// <summary>
         ///     Use C# destructor syntax for finalization code. 
         /// </summary>
@@ -85,16 +101,6 @@ namespace BNet.Client
             this.Dispose(false);
         }
 
-        
-        /// <summary>
-        ///     Implement IDisposable.
-        /// </summary>
-        public void Dispose()
-        {
-            this.Dispose(true);
-            GC.SuppressFinalize(this);
-        }
-
 
         /// <summary>
         ///     Occurs when a console message is received from the RCon server.
@@ -106,15 +112,6 @@ namespace BNet.Client
         ///     Occurs when a console message is received from the RCon server.
         /// </summary>
         internal event EventHandler<DisconnectedEventArgs> Disconnected;
-
-
-        /// <summary>
-        ///     Gets or sets a <see cref="Boolean" /> value that specifies
-        ///     whether this <see cref="MessageDispatcher" /> discards all
-        ///     console message datagrams received (the <see cref="MessageReceived" />
-        ///     event is never raised).
-        /// </summary>
-        internal bool DiscardConsoleMessages { get; set; }
 
 
         /// <summary>
@@ -132,14 +129,11 @@ namespace BNet.Client
 
             this.asyncOperation = AsyncOperationManager.CreateOperation(null);
 
-            var task = new Task(MainLoop);
+            var task = new Task(this.MainLoop);
             task.ContinueWith(this.ExceptionHandler, TaskContinuationOptions.OnlyOnFaulted);
             task.ContinueWith(this.AfterMainLoop, TaskContinuationOptions.OnlyOnRanToCompletion);
             task.ConfigureAwait(true);
             task.Start();
-
-            // let's give the main pump some headway to start listening
-            // task.Wait(500);
         }
 
 
@@ -176,7 +170,7 @@ namespace BNet.Client
                     this.RaiseDisconnected(args);
                 }
 
-                
+
                 this.LogTrace("SHUTDOWN COMMENCING");
                 this.shutdown = true;
 
@@ -271,7 +265,7 @@ namespace BNet.Client
             this.LogTrace("AFTER  await SendDatagramAsync");
 
             Debug.Assert(
-                transferredBytes == bytes.Length, 
+                transferredBytes == bytes.Length,
                 "Sent bytes count equal count of bytes meant to be sent.");
 
             if (dgram.Type == DatagramType.Command)
@@ -282,7 +276,7 @@ namespace BNet.Client
             return handler;
         }
 
-        
+
         internal void UpdateMetrics(RConMetrics rConMetrics)
         {
             rConMetrics.InboundPacketCount += this.inCount;
@@ -312,10 +306,9 @@ namespace BNet.Client
                     this.udpClient = null;
 
                     if (this.shutdownLock != null)
-	                {
+                    {
                         this.shutdownLock.Dispose();
                     }
-                    
                 }
 
                 // Note disposing has been done.
@@ -331,7 +324,7 @@ namespace BNet.Client
         private void MainLoop()
         {
             // throw new ArgumentException("Test shall not pass.");
-            
+
             // Check whether the thread has previously been named 
             // to avoid a possible InvalidOperationException. 
             if (Thread.CurrentThread.Name == null)
@@ -339,20 +332,20 @@ namespace BNet.Client
                 Thread.CurrentThread.Name = "MainPUMP" + Thread.CurrentThread.ManagedThreadId;
             }
 
-            var keepAlivePeriod = TimeSpan.FromSeconds(25);
+            TimeSpan keepAlivePeriod = TimeSpan.FromSeconds(25);
             this.lastCmdSentTime = DateTime.Now.AddSeconds(-10);
 
             while (!this.shutdown)
             {
                 this.LogTrace("Scheduling new receive task.");
-                var task = this.ReceiveDatagramAsync();
+                Task task = this.ReceiveDatagramAsync();
                 this.LogTrace("AFTER  scheduling new receive task.");
 
                 do
                 {
                     if (DateTime.Now - this.lastCmdSentTime > keepAlivePeriod)
                     {
-                        var alive = this.SendKeepAlivePacket().Result;
+                        bool alive = this.SendKeepAlivePacket().Result;
                     }
 
                     this.LogTraceFormat("===== WAITING RECEIVE =====, Status={0}", task.Status);
@@ -361,7 +354,7 @@ namespace BNet.Client
                 }
                 while (!task.IsCompleted && !this.shutdown);
             }
-            
+
             this.mainLoopDead = true;
             this.LogTrace("Main loop exited.");
 
@@ -373,7 +366,7 @@ namespace BNet.Client
         private async Task<bool> SendKeepAlivePacket()
         {
             var keepAliveDgram = new CommandDatagram(string.Empty);
-            var result = await this.SendDatagramAsync(keepAliveDgram);
+            ResponseHandler result = await this.SendDatagramAsync(keepAliveDgram);
 
             this.LogTraceFormat("C#{0:000} Sent keep alive command.", keepAliveDgram.SequenceNumber);
 
@@ -407,7 +400,7 @@ namespace BNet.Client
             // ReceiveAsync (BeginRead) will spawn a new thread
             // which blocks head-on against the IO Completion Port
             // http://msdn.microsoft.com/en-us/library/windows/desktop/aa364986(v=vs.85).aspx
-            var task = this.udpClient.ReceiveAsync();
+            Task<UdpReceiveResult> task = this.udpClient.ReceiveAsync();
 
             this.LogTrace("BEFORE await ReceiveAsync");
             UdpReceiveResult result = await task
@@ -417,6 +410,7 @@ namespace BNet.Client
             this.LogTrace("AFTER  await ReceiveAsync");
             if (!this.ValidateReceivedDatagram(result))
             {
+                this.DispatchPacketProblem(new PacketProblemEventArgs(PacketProblemType.InvalidLength));
                 this.LogTrace("INVALID datagram received");
                 return;
             }
@@ -427,7 +421,7 @@ namespace BNet.Client
             this.LogTraceFormat("{0:0}    Type dgram received.", dgramType);
 
 #if DEBUG
-            // shutdown msg from server (used only for testing)
+            // shutdown msg from server (not in protocol, used only for testing)
             if (dgramType == 0xFF)
             {
                 this.LogTrace("SHUTDOWN DATAGRAM RECEIVED - SHUTTING DOWN.");
@@ -440,18 +434,35 @@ namespace BNet.Client
             {
                 byte conMsgSeq = result.Buffer[Constants.ConsoleMessageSequenceNumberIndex];
                 this.LogTraceFormat("M#{0:000} Received", conMsgSeq);
-
+                
                 if (this.DiscardConsoleMessages)
                 {
                     await this.AcknowledgeMessage(conMsgSeq);
                     return;
                 }
+                
+                // if we already received a console message with this seq number
+                bool repeated = this.conMsgsTracker.Contains(conMsgSeq);
+                if (repeated)
+                {
+                    // if we did, just acknowledge it and don't process it
+                    // (the server probably didn't receive our previous ack)
+                    await this.AcknowledgeMessage(conMsgSeq);
+                    return;
+                }
+
+                // register the sequence number and continue processing the msg
+                this.conMsgsTracker.Push(conMsgSeq);
             }
 
-            var dgram = InboundDatagramBase.ParseReceivedBytes(result.Buffer);
+            IInboundDatagram dgram = InboundDatagramBase.ParseReceivedBytes(result.Buffer);
             if (dgram != null)
             {
-                await this.DispatchReceivedMessage(dgram);
+                await this.DispatchReceivedDatagram(dgram);
+            }
+            else
+            {
+                this.DispatchPacketProblem(new PacketProblemEventArgs(PacketProblemType.Corrupted));
             }
         }
 
@@ -472,7 +483,7 @@ namespace BNet.Client
         /// <param name="dgram">
         ///     The received <see cref="IDatagram" />.
         /// </param>
-        private async Task DispatchReceivedMessage(IInboundDatagram dgram)
+        private async Task DispatchReceivedDatagram(IInboundDatagram dgram)
         {
             this.parsedDatagramsCount++;
             if (dgram != null)
@@ -522,29 +533,60 @@ namespace BNet.Client
         /// </remarks>
         private void DispatchConsoleMessage(ConsoleMessageDatagram dgram)
         {
-            var args = new MessageReceivedEventArgs(dgram);
+            if (this.MessageReceived != null)
+            {
+                var args = new MessageReceivedEventArgs(dgram);
 
-            if (this.asyncOperation != null)
-            {
-                this.asyncOperation.Post(this.RaiseMessageReceived, args);
-            }
-            else
-            {
-                this.RaiseMessageReceived(args);
+                if (this.asyncOperation != null)
+                {
+                    this.asyncOperation.Post(o => this.OnMessageReceived((MessageReceivedEventArgs)o), args);
+                }
+                else
+                {
+                    this.OnMessageReceived(args);
+                }
             }
             this.dispatchedConsoleMessages++;
         }
 
 
-        private void RaiseMessageReceived(object args)
+        /// <summary>
+        ///     Dispatches packet problem events to the appropriate
+        ///     threading context (e.g. the UI thread or the ASP.NET context),
+        ///     by using AsyncOperation.
+        /// </summary>
+        /// <remarks>
+        ///     The context switch is costly, but usually what the
+        ///     library user will expect.
+        /// </remarks>
+        private void DispatchPacketProblem(PacketProblemEventArgs args)
         {
-            this.OnMessageReceived((MessageReceivedEventArgs)args);
+            if (this.PacketProblem != null)
+            {
+                if (this.asyncOperation != null)
+                {
+                    this.asyncOperation.Post(o => this.OnPacketProblem((PacketProblemEventArgs)o), args);
+                }
+                else
+                {
+                    this.OnPacketProblem(args);
+                }
+            }
+        }
+
+
+        private void OnPacketProblem(PacketProblemEventArgs e)
+        {
+            if (this.PacketProblem != null)
+            {
+                this.PacketProblem(this, e);
+            }
         }
 
 
         private void ExceptionHandler(Task task)
         {
-            var exInfo = ExceptionDispatchInfo.Capture(task.Exception);
+            ExceptionDispatchInfo exInfo = ExceptionDispatchInfo.Capture(task.Exception);
             this.forceShutdown = true;
             exInfo.Throw();
         }
@@ -570,5 +612,8 @@ namespace BNet.Client
                 string.Format(CultureInfo.InvariantCulture, fmt, args),
                 null);
         }
+
+
+        public event EventHandler<PacketProblemEventArgs> PacketProblem;
     }
 }

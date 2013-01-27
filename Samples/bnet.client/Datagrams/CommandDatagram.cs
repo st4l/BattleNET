@@ -43,7 +43,7 @@ namespace BNet.Client.Datagrams
             Buffer.SetByte(result, 0, 0xFF);
             Buffer.SetByte(result, 1, 0x01);
             Buffer.SetByte(result, 2, this.SequenceNumber);
-            Buffer.BlockCopy(cmdBytes, 0, result, 2, len);
+            Buffer.BlockCopy(cmdBytes, 0, result, 3, len);
             return result;
         }
     }

@@ -72,11 +72,14 @@
     <Compile Include="MessageReceivedEventArgs.cs" />
     <Compile Include="NetUdpClient.cs" />
     <Compile Include="OutboundDatagramQueue.cs" />
+    <Compile Include="PacketProblemEventArgs.cs" />
+    <Compile Include="PacketProblemType.cs" />
     <Compile Include="RConClient.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="RConMetrics.cs" />
     <Compile Include="ResponseHandler.cs" />
     <Compile Include="ResponseMessageDispatcher.cs" />
+    <Compile Include="SequenceTracker.cs" />
   </ItemGroup>
   <ItemGroup>
     <Content Include="reqs.txt" />

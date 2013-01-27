@@ -15,7 +15,7 @@ namespace BNet.Client
 
         public DateTimeOffset StartTime { get; set; }
         public DateTimeOffset StopTime { get; set; }
-        public TimeSpan TotalRunTime { get; set; }
+        public TimeSpan TotalRuntime { get; set; }
         public int InboundPacketCount { get; set; }
         public int OutboundPacketCount { get; set; }
         public int ParsedDatagramsCount { get; set; }
@@ -25,7 +25,7 @@ namespace BNet.Client
         public void StopCollecting()
         {
             this.StopTime = DateTimeOffset.Now;
-            this.TotalRunTime = this.StopTime - this.StartTime;
+            this.TotalRuntime = this.StopTime - this.StartTime;
         }
     }
 }

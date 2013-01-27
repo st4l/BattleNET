@@ -1,8 +1,5 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Net;
-using System.Text;
 
 namespace bnet.client.Tests
 {
@@ -15,7 +12,11 @@ namespace bnet.client.Tests
             this.Password = DefaultPassword;
         }
 
-        public static string DefaultPassword { get { return "fnu(\\$lkd\"fh"; } }
+
+        public static string DefaultPassword
+        {
+            get { return "fnu(\\$lkd\"fh"; }
+        }
 
         public IPEndPoint ServerEndpoint { get; set; }
         public string Password { get; set; }
@@ -24,9 +25,9 @@ namespace bnet.client.Tests
         internal int AverageResponseTime { get; set; } // ms
 
         public bool LoginAtOnce { get; set; }
+        public bool LoginAtThirdTry { get; set; }
         public bool LoginIncorrect { get; set; }
         public bool LoginServerDown { get; set; }
-        public bool LoginAtThirdTry { get; set; }
         public bool LoginSlow { get; set; }
         public bool CorruptConsoleMessages { get; set; }
 
@@ -36,5 +37,7 @@ namespace bnet.client.Tests
         public bool OnlyLogin { get; set; }
 
         public bool KeepAliveOnly { get; set; }
+
+        public bool RepeatedConsoleMessages { get; set; }
     }
 }

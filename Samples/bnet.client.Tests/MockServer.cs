@@ -25,6 +25,7 @@ namespace bnet.client.Tests
         private int loginAttempts;
         private bool shutdown;
         private int totalConMsgsGenerated;
+        private bool lastConMsgRepeated = false;
 
 
         public MockServer(MockServerSetup setup)
@@ -255,7 +256,16 @@ namespace bnet.client.Tests
 
         private void IncrementConMsgSequenceNum()
         {
+            if (this.setup.RepeatedConsoleMessages)
+            {
+                if (!this.lastConMsgRepeated)
+                {
+                    this.lastConMsgRepeated = true;
+                    return;
+                }
+            }
             this.conMsgSequenceNum = this.conMsgSequenceNum == (byte)255 ? (byte)0 : (byte)(this.conMsgSequenceNum + 1);
+            this.lastConMsgRepeated = false;
         }
 
 
@@ -272,6 +282,35 @@ namespace bnet.client.Tests
                 {
                     this.shutdown = true;
                 }
+                return;
+            }
+
+            this.ProcessCommand(payload);
+
+        }
+
+
+        private void ProcessCommand(byte[] payload)
+        {
+            byte seqNum = payload[2];
+            string cmdText = Encoding.ASCII.GetString(payload, 3, payload.Length - 3);
+
+            if (cmdText == "getplayers")
+            {
+                const string response = @"Players on server:
+[#] [IP Address]:[Port] [Ping] [GUID] [Name]
+--------------------------------------------------
+0   103.77.52.177:2304    32   1ef92993d1e8f2512422da34c9f975f1(OK) Jhon Denton (Lobby)
+0   103.77.52.177:2304    32   -  Pixie
+(19 players in total)";
+                byte[] responseBytes = Encoding.ASCII.GetBytes(response);
+                
+                var outPayload = new byte[responseBytes.Length + 3];
+                Buffer.SetByte(outPayload, 0, 0xFF);
+                Buffer.SetByte(outPayload, 1, 0x01);
+                Buffer.SetByte(outPayload, 2, seqNum);
+                Buffer.BlockCopy(responseBytes, 0, outPayload, 3, responseBytes.Length);
+                this.outboundQueue.Enqueue(this.BuildOutboundPacket(outPayload));
             }
         }
 

@@ -58,7 +58,11 @@ namespace BNet.Client
 
         private readonly object msgReceivedEventAccesorsLockObject = new object();
 
+        private readonly object packetProblemEventAccesorsLockObject = new object();
+
         private EventHandler<MessageReceivedEventArgs> subscribedMsgReceivedHandler;
+
+        private EventHandler<PacketProblemEventArgs> subscribedPktProblemHandler;
 
         internal RConMetrics Metrics { get; set; }
 
@@ -142,12 +146,14 @@ namespace BNet.Client
                 lock (this.msgReceivedEventAccesorsLockObject)
                 {
                     this.MsgReceived += value;
-                    if (this.subscribedMsgReceivedHandler == null)
+                    if (this.msgDispatcher == null)
                     {
                         return;
                     }
-
-                    this.msgDispatcher.MessageReceived -= this.subscribedMsgReceivedHandler;
+                    if (this.subscribedMsgReceivedHandler != null)
+                    {
+                        this.msgDispatcher.MessageReceived -= this.subscribedMsgReceivedHandler;
+                    }
                     this.subscribedMsgReceivedHandler = this.MsgReceived;
                     this.msgDispatcher.MessageReceived += this.MsgReceived;
                 }
@@ -158,12 +164,14 @@ namespace BNet.Client
                 lock (this.msgReceivedEventAccesorsLockObject)
                 {
                     this.MsgReceived -= value;
-                    if (this.subscribedMsgReceivedHandler == null)
+                    if (this.msgDispatcher == null)
                     {
                         return;
                     }
-
-                    this.msgDispatcher.MessageReceived -= this.subscribedMsgReceivedHandler;
+                    if (this.subscribedMsgReceivedHandler != null)
+                    {
+                        this.msgDispatcher.MessageReceived -= this.subscribedMsgReceivedHandler;
+                    }
                     this.subscribedMsgReceivedHandler = this.MsgReceived;
                     this.msgDispatcher.MessageReceived += this.MsgReceived;
                 }
@@ -173,6 +181,60 @@ namespace BNet.Client
         private event EventHandler<MessageReceivedEventArgs> MsgReceived;
 
 
+
+        /// <summary>
+        ///     Occurs when some problem is detected in the incoming 
+        ///     packets from the server, such as corrupted packets or
+        ///     lost packets.
+        /// </summary>
+        /// <remarks>
+        ///     In <see cref="StartListening" /> we are passing along the
+        ///     multicast delegate directly to
+        ///     <see cref="MessageDispatcher.PacketProblem" />, so we
+        ///     need to update it if we already passed it (subscribed).
+        /// </remarks>
+        public event EventHandler<PacketProblemEventArgs> PacketProblem
+        {
+            add
+            {
+                lock (this.packetProblemEventAccesorsLockObject)
+                {
+                    this.PktProblem += value;
+                    if (this.msgDispatcher == null)
+                    {
+                        return;
+                    }
+                    if (this.subscribedPktProblemHandler != null)
+                    {
+                        this.msgDispatcher.PacketProblem -= this.subscribedPktProblemHandler;
+                    }
+                    this.subscribedPktProblemHandler = this.PktProblem;
+                    this.msgDispatcher.PacketProblem += this.PktProblem;
+                }
+            }
+
+            remove
+            {
+                lock (this.packetProblemEventAccesorsLockObject)
+                {
+                    this.PktProblem -= value;
+                    if (this.msgDispatcher == null)
+                    {
+                        return;
+                    }
+                    if (this.subscribedPktProblemHandler != null)
+                    {
+                        this.msgDispatcher.PacketProblem -= this.subscribedPktProblemHandler;
+                    }
+                    this.subscribedPktProblemHandler = this.PktProblem;
+                    this.msgDispatcher.PacketProblem += this.PktProblem;
+                }
+            }
+        }
+
+        private event EventHandler<PacketProblemEventArgs> PktProblem;
+        
+        
         /// <summary>
         ///     Gets or sets a <see cref="bool" /> value that specifies
         ///     whether this <see cref="RConClient" /> tries to keep the
@@ -233,6 +295,13 @@ namespace BNet.Client
         }
 
 
+        public ResponseHandler SendCommand(string commandText)
+        {
+            var dgram = new CommandDatagram(commandText);
+            return this.msgDispatcher.SendDatagramAsync(dgram).Result;
+        }
+
+
         /// <summary>
         ///     Stops all processing gracefully and disposes this instance.
         /// </summary>
@@ -288,6 +357,13 @@ namespace BNet.Client
                     {
                         this.Client.Close();
                     }
+
+#if DEBUG
+                    if (this.runningLock != null)
+                    {
+                        this.runningLock.Close();
+                    }
+#endif
                 }
 
                 // Note disposing has been done.
@@ -353,6 +429,8 @@ namespace BNet.Client
                                      {DiscardConsoleMessages = this.DiscardConsoleMessages};
             this.subscribedMsgReceivedHandler = this.MsgReceived;
             this.msgDispatcher.MessageReceived += this.subscribedMsgReceivedHandler;
+            this.subscribedPktProblemHandler = this.PktProblem;
+            this.msgDispatcher.PacketProblem += this.subscribedPktProblemHandler;
             this.msgDispatcher.Disconnected += MsgDispatcherOnDisconnected;
             this.msgDispatcher.Start();
         }
@@ -397,8 +475,13 @@ namespace BNet.Client
             {
                 this.msgDispatcher.MessageReceived -= this.subscribedMsgReceivedHandler;
             }
-            this.msgDispatcher.Disconnected -= this.MsgDispatcherOnDisconnected;
             this.subscribedMsgReceivedHandler = null;
+            if (this.subscribedPktProblemHandler != null)
+            {
+                this.msgDispatcher.PacketProblem -= this.subscribedPktProblemHandler;
+            }
+            this.subscribedMsgReceivedHandler = null;
+            this.msgDispatcher.Disconnected -= this.MsgDispatcherOnDisconnected;
             this.msgDispatcher.UpdateMetrics(this.Metrics);
             this.msgDispatcher.Close(); // disposes
             this.msgDispatcher = null;

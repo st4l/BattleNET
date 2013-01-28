@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Threading;
 using BNet.Client.Datagrams;
 
 namespace BNet.Client
@@ -19,6 +20,7 @@ namespace BNet.Client
             private DateTime lastSendTime = DateTime.MinValue;
             private int maxTries = 5;
             private int sentCount;
+            private SpinWait spinWait = new SpinWait();
 
             public bool Expired { get; set; }
 
@@ -30,14 +32,17 @@ namespace BNet.Client
 
             public bool Ping()
             {
+                
                 if (this.Acknowledged)
                 {
                     return true;
                 }
 
+                this.spinWait.SpinOnce();
+
                 // check if we received an ack for any of the sent ones
                 int acks = this.sentHandlers.Count(handler => handler.ResponseDatagram != null);
-                Debug.WriteLine("acks = {0}", acks);
+                // Debug.WriteLine("{1:mm:ss:fffff} acks = {0}", acks, DateTime.Now);
                 if (acks > 0)
                 {
                     this.msgDispatcher.keepAlivePacketsAcks += acks;

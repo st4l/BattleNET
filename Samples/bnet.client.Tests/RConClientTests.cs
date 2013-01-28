@@ -340,7 +340,8 @@ namespace bnet.client.Tests
             var conf = new MockServerSetup
             {
                 LoadTestConsoleMessages = -1,
-                KeepAliveOnly = true
+                KeepAliveOnly = true,
+                MaxRunSeconds = 20
             };
 
             var client = CreateClient(conf);

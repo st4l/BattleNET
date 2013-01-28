@@ -27,7 +27,7 @@ namespace bnet.WinClient
             var port = 2302;
             var rcc = new RConClient(host, port, "70e02f66");
             rcc.MessageReceived += this.OnRccOnMessageReceived;
-
+            rcc.Disconnected += RccOnDisconnected;
 
             bool connected = false;
             try
@@ -54,6 +54,12 @@ namespace bnet.WinClient
                     rcc.MessageReceived -= this.OnRccOnMessageReceived;
                 }
             }
+        }
+
+
+        private void RccOnDisconnected(object sender, DisconnectedEventArgs disconnectedEventArgs)
+        {
+            this.WriteLine("Disconnected!");
         }
 
 

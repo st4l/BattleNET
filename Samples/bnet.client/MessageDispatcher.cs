@@ -372,7 +372,6 @@ namespace BNet.Client
                     // if keepAliveTracker is alive, ping and check for ack
                     if (this.keepAliveTracker != null)
                     {
-                        Debug.WriteLine("keepAliveTracker ping");
                         if (this.keepAliveTracker.Ping())
                         {
                             // success, no need to keep pinging
@@ -446,7 +445,6 @@ namespace BNet.Client
             // shutdown msg from server (not in protocol, used only for testing)
             if (dgramType == 0xFF && this.ShutdownReason == ShutdownReason.None)
             {
-                Debug.WriteLine("SHUTDOWN packet received");
                 this.LogTrace("SHUTDOWN DATAGRAM RECEIVED - SHUTTING DOWN.");
                 this.ShutdownReason = ShutdownReason.ServerRequested;
                 return;
@@ -483,7 +481,6 @@ namespace BNet.Client
             {
                 // command response
                 byte cmdSeq = result.Buffer[Constants.CommandResponseSequenceNumberIndex];
-                Debug.WriteLine("acknowledge for command packet {0} received", cmdSeq);
                 bool repeated = this.cmdsTracker.Contains(cmdSeq);
                 if (repeated)
                 {

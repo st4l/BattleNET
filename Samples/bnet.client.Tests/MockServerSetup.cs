@@ -5,11 +5,15 @@ namespace bnet.client.Tests
 {
     public class MockServerSetup
     {
+        private DateTime startTime;
+
+
         public MockServerSetup()
         {
             this.ServerEndpoint = new IPEndPoint(IPAddress.Parse("45.87.98.123"), 2302);
-            this.ShutdownServerTime = DateTime.Now.AddMinutes(1);
             this.Password = DefaultPassword;
+            this.MaxRunSeconds = 10;
+            this.startTime = DateTime.Now;
         }
 
 
@@ -20,7 +24,10 @@ namespace bnet.client.Tests
 
         public IPEndPoint ServerEndpoint { get; set; }
         public string Password { get; set; }
-        public DateTime ShutdownServerTime { get; set; }
+        public DateTime ShutdownServerTime
+        {
+            get { return startTime.AddSeconds(this.MaxRunSeconds); }
+        }
 
         internal int AverageResponseTime { get; set; } // ms
 
@@ -39,5 +46,9 @@ namespace bnet.client.Tests
         public bool KeepAliveOnly { get; set; }
 
         public bool RepeatedConsoleMessages { get; set; }
+
+        public bool DontAnswerKeepAlive { get; set; }
+
+        public int MaxRunSeconds { get; set; }
     }
 }

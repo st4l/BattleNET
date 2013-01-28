@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Net.Sockets;
 using System.Text;
@@ -25,7 +26,8 @@ namespace bnet.client.Tests
         private int loginAttempts;
         private bool shutdown;
         private int totalConMsgsGenerated;
-        private bool lastConMsgRepeated = false;
+        private bool lastConMsgRepeated;
+        private int waitShutdown;
 
 
         public MockServer(MockServerSetup setup)
@@ -63,7 +65,12 @@ namespace bnet.client.Tests
                 {
                     if (sendBytes[7] == 0xFF)
                     {
-                        this.shutdown = true;
+                        // wait a couple loop cycles so the client receives
+                        // everything (keepalive might need a couple cycles to pick it up)
+                        if (++this.waitShutdown > 20)
+                        {
+                            this.shutdown = true;
+                        }
                     }
                     return new UdpReceiveResult(sendBytes, this.setup.ServerEndpoint);
                 }
@@ -231,6 +238,7 @@ namespace bnet.client.Tests
 
         private void SendShutdownPacket()
         {
+            Debug.WriteLine("SHUTDOWN packet sent to client");
             byte[] shutdownPacket = this.BuildShutdownPacket();
             this.outboundQueue.Enqueue(shutdownPacket); // EOF
         }
@@ -276,17 +284,35 @@ namespace bnet.client.Tests
             {
                 Assert.AreEqual(payload[0], (byte)0xFF);
                 Assert.AreEqual(payload[1], (byte)0x01);
-                // payload[2] seqNum
+                var seqNum = payload[2];
                 this.keepAlivePacketsReceivedCount++;
+                if (!this.setup.DontAnswerKeepAlive)
+                {
+                    this.AcknowledgeEmptyResponseCommand(seqNum);
+                }
+
                 if (this.setup.KeepAliveOnly)
                 {
-                    this.shutdown = true;
+                    this.SendShutdownPacket();
+                    return;
                 }
+
                 return;
             }
 
             this.ProcessCommand(payload);
 
+        }
+
+
+        private void AcknowledgeEmptyResponseCommand(byte seqNumber)
+        {
+            var outPayload = new byte[3];
+            Buffer.SetByte(outPayload, 0, 0xFF);
+            Buffer.SetByte(outPayload, 1, 0x01);
+            Buffer.SetByte(outPayload, 2, seqNumber);
+            this.outboundQueue.Enqueue(this.BuildOutboundPacket(outPayload));
+            Debug.WriteLine("command packet {0} acknowledged", seqNumber);
         }
 
 

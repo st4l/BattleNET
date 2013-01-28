@@ -68,6 +68,7 @@
     <Compile Include="DisconnectedEventArgs.cs" />
     <Compile Include="GlobalSuppressions.cs" />
     <Compile Include="IUdpClient.cs" />
+    <Compile Include="KeepAliveTracker.cs" />
     <Compile Include="MessageDispatcher.cs" />
     <Compile Include="MessageReceivedEventArgs.cs" />
     <Compile Include="NetUdpClient.cs" />
@@ -80,6 +81,7 @@
     <Compile Include="ResponseHandler.cs" />
     <Compile Include="ResponseMessageDispatcher.cs" />
     <Compile Include="SequenceTracker.cs" />
+    <Compile Include="ShutdownReason.cs" />
   </ItemGroup>
   <ItemGroup>
     <Content Include="reqs.txt" />

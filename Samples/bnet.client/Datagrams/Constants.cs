@@ -5,7 +5,6 @@ namespace BNet.Client.Datagrams
 {
     public static class Constants
     {
-        public const int CommandResponseSeqIndex = 8;
 
 
         #region Constants
@@ -17,6 +16,10 @@ namespace BNet.Client.Datagrams
         public const int ConsoleMessageSequenceNumberIndex = 8;
 
         public const int ConsoleMessageBodyStartIndex = 9;
+
+        public const int CommandResponseMultipartFlag = 9;
+
+        public const int CommandResponseSequenceNumberIndex = 8;
 
         #endregion
     }

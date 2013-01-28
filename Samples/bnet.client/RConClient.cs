@@ -2,20 +2,19 @@
 // <copyright file="RConClient.cs" company="Me">Copyright (c) 2012 St4l.</copyright>
 // ----------------------------------------------------------------------------------------------------
 
+using System;
+using System.Diagnostics;
+using System.Globalization;
+using System.Runtime.ExceptionServices;
+using System.Security.Authentication;
+using System.Threading;
+using System.Threading.Tasks;
+using BNet.Client.Datagrams;
+using log4net;
+using log4net.Core;
+
 namespace BNet.Client
 {
-    using System;
-    using System.Diagnostics;
-    using System.Globalization;
-    using System.Runtime.ExceptionServices;
-    using System.Security.Authentication;
-    using System.Threading;
-    using System.Threading.Tasks;
-    using Datagrams;
-    using log4net;
-    using log4net.Core;
-
-
     /// <summary>
     ///     The <see cref='RConClient' /> class provides access to BattlEye RCon services.
     /// </summary>
@@ -68,6 +67,8 @@ namespace BNet.Client
 
         internal IUdpClient Client { get; set; }
 
+        public ShutdownReason ShutdownReason { get; private set; }
+        
         private ILog Log { get; set; }
 
 #if DEBUG
@@ -98,7 +99,7 @@ namespace BNet.Client
                 {
                     client.Close();
                 }
-                var nex = ExceptionDispatchInfo.Capture(ex);
+                ExceptionDispatchInfo nex = ExceptionDispatchInfo.Capture(ex);
                 nex.Throw();
             }
             this.Client = client;
@@ -181,7 +182,6 @@ namespace BNet.Client
         private event EventHandler<MessageReceivedEventArgs> MsgReceived;
 
 
-
         /// <summary>
         ///     Occurs when some problem is detected in the incoming 
         ///     packets from the server, such as corrupted packets or
@@ -233,8 +233,8 @@ namespace BNet.Client
         }
 
         private event EventHandler<PacketProblemEventArgs> PktProblem;
-        
-        
+
+
         /// <summary>
         ///     Gets or sets a <see cref="bool" /> value that specifies
         ///     whether this <see cref="RConClient" /> tries to keep the
@@ -275,7 +275,7 @@ namespace BNet.Client
 
             this.StartListening();
 
-            var loggedIn = false;
+            bool loggedIn = false;
             try
             {
                 this.LogTrace("BEFORE LOGIN await Login()");
@@ -295,10 +295,10 @@ namespace BNet.Client
         }
 
 
-        public ResponseHandler SendCommand(string commandText)
+        public async Task<ResponseHandler> SendCommandAsync(string commandText)
         {
             var dgram = new CommandDatagram(commandText);
-            return this.msgDispatcher.SendDatagramAsync(dgram).Result;
+            return await this.msgDispatcher.SendDatagramAsync(dgram);
         }
 
 
@@ -431,7 +431,7 @@ namespace BNet.Client
             this.msgDispatcher.MessageReceived += this.subscribedMsgReceivedHandler;
             this.subscribedPktProblemHandler = this.PktProblem;
             this.msgDispatcher.PacketProblem += this.subscribedPktProblemHandler;
-            this.msgDispatcher.Disconnected += MsgDispatcherOnDisconnected;
+            this.msgDispatcher.Disconnected += this.MsgDispatcherOnDisconnected;
             this.msgDispatcher.Start();
         }
 
@@ -483,8 +483,12 @@ namespace BNet.Client
             this.subscribedMsgReceivedHandler = null;
             this.msgDispatcher.Disconnected -= this.MsgDispatcherOnDisconnected;
             this.msgDispatcher.UpdateMetrics(this.Metrics);
+            this.ShutdownReason = this.msgDispatcher.ShutdownReason;
             this.msgDispatcher.Close(); // disposes
             this.msgDispatcher = null;
         }
+
+
+        
     }
 }

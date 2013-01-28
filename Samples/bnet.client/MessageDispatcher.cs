@@ -22,8 +22,10 @@ namespace BNet.Client
     ///     using the supplied <see cref="UdpClient" /> and
     ///     dispatches them accordingly.
     /// </summary>
-    internal sealed class MessageDispatcher : IDisposable
+    internal sealed partial class MessageDispatcher : IDisposable
     {
+        private readonly SequenceTracker cmdsTracker = new SequenceTracker();
+        private readonly SequenceTracker conMsgsTracker = new SequenceTracker();
         private readonly ResponseMessageDispatcher responseDispatcher;
 
         private AsyncOperation asyncOperation;
@@ -33,16 +35,17 @@ namespace BNet.Client
         private bool forceShutdown;
         private bool hasStarted;
         private int inCount;
+        private int keepAlivePacketsAcks;
+        private KeepAliveTracker keepAliveTracker;
         private DateTime lastCmdSentTime;
-        private DateTime lastDgramReceivedTime;
+        // private DateTime lastDgramReceivedTime;
 
         private bool mainLoopDead;
         private int outCount;
         private int parsedDatagramsCount;
-        private bool shutdown;
         private ManualResetEventSlim shutdownLock;
         private IUdpClient udpClient;
-        private SequenceTracker conMsgsTracker = new SequenceTracker();
+        private int keepAlivePacketsSent;
 
 
         /// <summary>
@@ -60,6 +63,9 @@ namespace BNet.Client
             this.responseDispatcher = new ResponseMessageDispatcher();
             this.Log = LogManager.GetLogger(this.GetType());
         }
+
+
+        public ShutdownReason ShutdownReason { get; private set; }
 
 
         private ILog Log { get; set; }
@@ -140,7 +146,7 @@ namespace BNet.Client
         private void AfterMainLoop(Task task)
         {
             this.LogTrace("AFTER MAIN LOOP");
-            this.Close();
+            this.InternalClose();
         }
 
 
@@ -155,24 +161,21 @@ namespace BNet.Client
                 return;
             }
 
+            if (this.ShutdownReason == ShutdownReason.None)
+            {
+                this.ShutdownReason = ShutdownReason.UserRequested;
+            }
+            this.InternalClose();
+        }
+
+
+        private void InternalClose()
+        {
             this.LogTrace("CLOSE");
 
             if (!this.forceShutdown)
             {
-                var args = new DisconnectedEventArgs();
-
-                if (this.asyncOperation != null)
-                {
-                    this.asyncOperation.Post(this.RaiseDisconnected, args);
-                }
-                else
-                {
-                    this.RaiseDisconnected(args);
-                }
-
-
                 this.LogTrace("SHUTDOWN COMMENCING");
-                this.shutdown = true;
 
                 if (!this.mainLoopDead)
                 {
@@ -187,6 +190,16 @@ namespace BNet.Client
             }
 
             this.Dispose();
+
+            var args = new DisconnectedEventArgs();
+            if (this.asyncOperation != null)
+            {
+                this.asyncOperation.Post(this.RaiseDisconnected, args);
+            }
+            else
+            {
+                this.RaiseDisconnected(args);
+            }
         }
 
 
@@ -283,6 +296,8 @@ namespace BNet.Client
             rConMetrics.OutboundPacketCount += this.outCount;
             rConMetrics.ParsedDatagramsCount += this.parsedDatagramsCount;
             rConMetrics.DispatchedConsoleMessages += this.dispatchedConsoleMessages;
+            rConMetrics.KeepAlivePacketsSent += this.keepAlivePacketsSent;
+            rConMetrics.KeepAlivePacketsAcknowledgedByServer += this.keepAlivePacketsAcks;
         }
 
 
@@ -335,24 +350,46 @@ namespace BNet.Client
             TimeSpan keepAlivePeriod = TimeSpan.FromSeconds(25);
             this.lastCmdSentTime = DateTime.Now.AddSeconds(-10);
 
-            while (!this.shutdown)
+            while (this.ShutdownReason == ShutdownReason.None)
             {
                 this.LogTrace("Scheduling new receive task.");
                 Task task = this.ReceiveDatagramAsync();
                 this.LogTrace("AFTER  scheduling new receive task.");
 
+                // do the following at least once and until the receive task
+                // has completed (or we're shutting down for some reason)
                 do
                 {
                     if (DateTime.Now - this.lastCmdSentTime > keepAlivePeriod)
                     {
-                        bool alive = this.SendKeepAlivePacket().Result;
+                        // spawn a keep alive tracker until server acknowledges
+                        if (this.keepAliveTracker == null)
+                        {
+                            this.keepAliveTracker = new KeepAliveTracker(this);
+                        }
+                    }
+
+                    // if keepAliveTracker is alive, ping and check for ack
+                    if (this.keepAliveTracker != null)
+                    {
+                        Debug.WriteLine("keepAliveTracker ping");
+                        if (this.keepAliveTracker.Ping())
+                        {
+                            // success, no need to keep pinging
+                            this.keepAliveTracker = null;
+                        }
+                        else if (this.keepAliveTracker.Expired)
+                        {
+                            // no ack after several tries, shutdown
+                            this.ShutdownReason = ShutdownReason.NoResponseFromServer;
+                        }
                     }
 
                     this.LogTraceFormat("===== WAITING RECEIVE =====, Status={0}", task.Status);
                     task.Wait(500);
                     this.LogTraceFormat("====== DONE WAITING =======, Status={0}", task.Status);
                 }
-                while (!task.IsCompleted && !this.shutdown);
+                while (!task.IsCompleted && this.ShutdownReason == ShutdownReason.None );
             }
 
             this.mainLoopDead = true;
@@ -360,20 +397,6 @@ namespace BNet.Client
 
             // signal we're exiting the thread
             this.ExitMainLoop();
-        }
-
-
-        private async Task<bool> SendKeepAlivePacket()
-        {
-            var keepAliveDgram = new CommandDatagram(string.Empty);
-            ResponseHandler result = await this.SendDatagramAsync(keepAliveDgram);
-
-            this.LogTraceFormat("C#{0:000} Sent keep alive command.", keepAliveDgram.SequenceNumber);
-
-            await result.WaitForResponse(1000);
-            var responseDgram = result.ResponseDatagram as CommandResponseDatagram;
-            return responseDgram != null && responseDgram.Type == DatagramType.Command
-                   && responseDgram.OriginalSequenceNumber == keepAliveDgram.SequenceNumber;
         }
 
 
@@ -415,17 +438,17 @@ namespace BNet.Client
                 return;
             }
 
-            this.lastDgramReceivedTime = DateTime.Now;
             byte dgramType = result.Buffer[Constants.DatagramTypeIndex];
             this.inCount++;
             this.LogTraceFormat("{0:0}    Type dgram received.", dgramType);
 
 #if DEBUG
             // shutdown msg from server (not in protocol, used only for testing)
-            if (dgramType == 0xFF)
+            if (dgramType == 0xFF && this.ShutdownReason == ShutdownReason.None)
             {
+                Debug.WriteLine("SHUTDOWN packet received");
                 this.LogTrace("SHUTDOWN DATAGRAM RECEIVED - SHUTTING DOWN.");
-                this.shutdown = true;
+                this.ShutdownReason = ShutdownReason.ServerRequested;
                 return;
             }
 #endif
@@ -434,13 +457,13 @@ namespace BNet.Client
             {
                 byte conMsgSeq = result.Buffer[Constants.ConsoleMessageSequenceNumberIndex];
                 this.LogTraceFormat("M#{0:000} Received", conMsgSeq);
-                
+
                 if (this.DiscardConsoleMessages)
                 {
                     await this.AcknowledgeMessage(conMsgSeq);
                     return;
                 }
-                
+
                 // if we already received a console message with this seq number
                 bool repeated = this.conMsgsTracker.Contains(conMsgSeq);
                 if (repeated)
@@ -452,8 +475,30 @@ namespace BNet.Client
                 }
 
                 // register the sequence number and continue processing the msg
-                this.conMsgsTracker.Push(conMsgSeq);
+                this.conMsgsTracker.StartTracking(conMsgSeq);
             }
+
+
+            if (dgramType == (byte)DatagramType.Command)
+            {
+                // command response
+                byte cmdSeq = result.Buffer[Constants.CommandResponseSequenceNumberIndex];
+                Debug.WriteLine("acknowledge for command packet {0} received", cmdSeq);
+                bool repeated = this.cmdsTracker.Contains(cmdSeq);
+                if (repeated)
+                {
+                    // doesn't repeat because multipart?
+                    if (result.Buffer[Constants.CommandResponseMultipartFlag] != 0x00)
+                    {
+                        return;
+                    } // else go ahead and dispatch the part
+                }
+                else
+                {
+                    this.cmdsTracker.StartTracking(cmdSeq);
+                }
+            }
+
 
             IInboundDatagram dgram = InboundDatagramBase.ParseReceivedBytes(result.Buffer);
             if (dgram != null)

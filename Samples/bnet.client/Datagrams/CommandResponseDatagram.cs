@@ -11,7 +11,7 @@ namespace BNet.Client.Datagrams
     {
         internal CommandResponseDatagram(byte[] buffer)
         {
-            this.OriginalSequenceNumber = buffer[Constants.CommandResponseSeqIndex];
+            this.OriginalSequenceNumber = buffer[Constants.CommandResponseSequenceNumberIndex];
             int len = Buffer.ByteLength(buffer);
             var body = new byte[len - 9];
             Buffer.BlockCopy(buffer, 9, body, 0, len - 9);

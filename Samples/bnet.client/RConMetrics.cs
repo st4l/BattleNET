@@ -1,8 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace BNet.Client
 {
@@ -13,6 +9,7 @@ namespace BNet.Client
             this.StartTime = DateTimeOffset.Now;
         }
 
+
         public DateTimeOffset StartTime { get; set; }
         public DateTimeOffset StopTime { get; set; }
         public TimeSpan TotalRuntime { get; set; }
@@ -20,6 +17,9 @@ namespace BNet.Client
         public int OutboundPacketCount { get; set; }
         public int ParsedDatagramsCount { get; set; }
         public int DispatchedConsoleMessages { get; set; }
+        public int KeepAlivePacketsSent { get; set; }
+        public int KeepAlivePacketsAcknowledgedByServer { get; set; }
+
 
 
         public void StopCollecting()

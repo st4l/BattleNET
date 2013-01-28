@@ -3,6 +3,7 @@
 // ----------------------------------------------------------------------------------------------------
 
 using System.Collections.Generic;
+using System.Diagnostics;
 using BNet.Client.Datagrams;
 
 namespace BNet.Client
@@ -39,13 +40,14 @@ namespace BNet.Client
                 return;
             }
 
-            // it's a command.
+            // it's a command response.
             var cmdDgram = (CommandResponseDatagram)dgram;
             lock (this.cmdResponseHandlers)
             {
                 var handler = this.cmdResponseHandlers[cmdDgram.OriginalSequenceNumber];
                 this.cmdResponseHandlers.Remove(cmdDgram.OriginalSequenceNumber);
                 handler.Return(cmdDgram);
+                Debug.WriteLine("handler for command packet {0} invoked", cmdDgram.OriginalSequenceNumber);
             }
         }
     }

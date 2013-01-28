@@ -4,25 +4,27 @@ namespace BNet.Client
 {
     /// <summary>
     ///     Uses a byte buffer to store the last n sequence numbers
-    ///     passed to it with Push, and provides a facility to check
-    ///     whether a sequenceNumber was recorded.
+    ///     passed to it with <see cref="StartTracking" />, and 
+    ///     provides a facility to check whether a sequenceNumber 
+    ///     was recorded, where n is the <see cref="Capacity" /> 
+    ///     of this tracker.
     /// </summary>
     internal class SequenceTracker
     {
         private readonly byte[] buffer;
-        private readonly int capacity;
+        public int Capacity { get; private set; }
         private int current = -1;
         private int max = -1;
 
         public SequenceTracker()
         {
-            this.capacity = 100;
+            this.Capacity = 100;
             this.buffer = new byte[100];
         }
 
         public SequenceTracker(int capacity)
         {
-            this.capacity = capacity;
+            this.Capacity = capacity;
             this.buffer = new byte[capacity];
         }
 
@@ -32,12 +34,12 @@ namespace BNet.Client
         ///     sequence numbers that no longer fit in the buffer.
         /// </summary>
         /// <param name="sequenceNumber">The sequence number to track.</param>
-        public void Push(byte sequenceNumber)
+        public void StartTracking(byte sequenceNumber)
         {
             lock (this)
             {
                 this.current++;
-                if (this.current == this.capacity)
+                if (this.current == this.Capacity)
                 {
                     this.current = 0;
                 }

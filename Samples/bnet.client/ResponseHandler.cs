@@ -54,7 +54,7 @@ namespace BNet.Client
         ///     After the response is received, the received response 
         ///     message.
         /// </summary>
-        public IInboundDatagram ResponseDatagram { get; private set; }
+        public IInboundDatagram ResponseDatagram { get; internal set; }
 
 
         /// <summary>

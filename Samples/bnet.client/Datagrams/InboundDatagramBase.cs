@@ -28,8 +28,8 @@ namespace BNet.Client.Datagrams
         /// </summary>
         /// <param name="buffer">The received bytes.</param>
         /// <returns>
-        ///     An <see cref="IInboundDatagram"/> containing the received information,
-        ///     or null if the checksum validation failed.</returns>
+        ///     An <see cref="IInboundDatagram"/> containing the received information.
+        /// </returns>
         /// <remarks>
         /// The RCon protocol specification for incoming packets:
         /// 
@@ -47,18 +47,18 @@ namespace BNet.Client.Datagrams
         /// #### COMMAND RESPONSE MESSAGE
         /// |Index       |   7    |                8                    |      9  . . .       |
         /// |:---------- | :----: | :---------------------------------: | :-----------------: |
-        /// |Description |  0x01  |   received 1-byte sequence number   | NOTHING, OR response (ASCII string without null-terminator), OR continuation header (see below)   |
+        /// |Description |  0x01  |   received 1-byte sequence number   | NOTHING, OR response (ASCII string without null-terminator), OR multi-part header (see below) + response |
         /// 
         /// 
-        /// #### COMMAND RESPONSE CONTINUATION HEADER
-        /// |Index       |    9   |               10                    |      11  . . .      |
-        /// |:---------- | :----: | :---------------------------------: | :-----------------: |
-        /// |Description |  0x00  | number of packets for this response | 0-based index of the current packet |
+        /// #### COMMAND RESPONSE MULTI-PART HEADER
+        /// |Index       |    9   |               10                    |                11                   |              12 . . .                        |
+        /// |:---------- | :----: | :---------------------------------: | :---------------------------------: | :--------------------------------: | 
+        /// |Description |  0x00  | number of packets for this response | 0-based index of the current packet | response (ASCII string without null-terminator) |
         /// 
         /// 
         /// #### CONSOLE MESSAGE
-        /// |Index       |   7    |                8                    |      9  . . .       |
-        /// |:---------- | :----: | :---------------------------------: | :-----------------: |
+        /// |Index       |   7    |                8                       |      9  . . .       |
+        /// |:---------- | :----: | :------------------------------------: | :-----------------: |
         /// |Description |  0x02  | 1-byte sequence number (starting at 0) | server message (ASCII string without null-terminator) |
         ///     
         /// </remarks>
@@ -69,18 +69,18 @@ namespace BNet.Client.Datagrams
                 throw new ArgumentNullException("buffer");
             }
 
-            if (!VerifyCrc(buffer))
-            {
-                return null;
-            }
-
-            var type = (DatagramType)buffer[Constants.DatagramTypeIndex];
+            var type = (DatagramType)Buffer.GetByte(buffer, Constants.DatagramTypeIndex);
             switch (type)
             {
                 case DatagramType.Login:
                     return new LoginResponseDatagram(buffer);
                 case DatagramType.Command:
-                    return new CommandResponseDatagram(buffer);
+                    if (Buffer.ByteLength(buffer) > Constants.CommandResponseMultipartFlag
+                        && Buffer.GetByte(buffer, Constants.CommandResponseMultipartFlag) == 0x00)
+                    {
+                        return new CommandResponsePartDatagram(buffer);
+                    }
+                    return new CommandSinglePacketResponseDatagram(buffer);
                 case DatagramType.Message:
                     return new ConsoleMessageDatagram(buffer);
                 default:
@@ -89,22 +89,5 @@ namespace BNet.Client.Datagrams
         }
 
 
-        private static bool VerifyCrc(byte[] buffer)
-        {
-            int payloadLength = Buffer.ByteLength(buffer) - 6;
-            var payload = new byte[payloadLength];
-            Buffer.BlockCopy(buffer, 6, payload, 0, payloadLength);
-            byte[] computedChecksum;
-            using (var crc = new Crc32(Crc32.DefaultPolynomialReversed, Crc32.DefaultSeed))
-            {
-                computedChecksum = crc.ComputeHash(payload);
-                Array.Reverse(computedChecksum);
-            }
-
-            var originalChecksum = new byte[4];
-            Buffer.BlockCopy(buffer, 2, originalChecksum, 0, 4);
-
-            return computedChecksum.SequenceEqual(originalChecksum);
-        }
     }
 }

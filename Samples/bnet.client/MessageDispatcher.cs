@@ -6,6 +6,7 @@ using System;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Globalization;
+using System.Linq;
 using System.Net.Sockets;
 using System.Runtime.ExceptionServices;
 using System.Security.Permissions;
@@ -169,40 +170,6 @@ namespace BNet.Client
         }
 
 
-        private void InternalClose()
-        {
-            this.LogTrace("CLOSE");
-
-            if (!this.forceShutdown)
-            {
-                this.LogTrace("SHUTDOWN COMMENCING");
-
-                if (!this.mainLoopDead)
-                {
-                    this.shutdownLock = new ManualResetEventSlim(false);
-
-                    // wait until the main thread is exited
-                    this.LogTrace("WAITING FOR THREADS TO EXIT");
-                    this.shutdownLock.Wait();
-                }
-
-                this.LogTrace("SHUTDOWN ACHIEVED - DISPOSING");
-            }
-
-            this.Dispose();
-
-            var args = new DisconnectedEventArgs();
-            if (this.asyncOperation != null)
-            {
-                this.asyncOperation.Post(this.RaiseDisconnected, args);
-            }
-            else
-            {
-                this.RaiseDisconnected(args);
-            }
-        }
-
-
         private void RaiseDisconnected(object args)
         {
             this.OnDisconnected((DisconnectedEventArgs)args);
@@ -290,6 +257,10 @@ namespace BNet.Client
         }
 
 
+        /// <summary>
+        ///     Meant to be called after Close(), i.e. once after each session.
+        /// </summary>
+        /// <param name="rConMetrics">The <see cref="RConMetrics"/> to update.</param>
         internal void UpdateMetrics(RConMetrics rConMetrics)
         {
             rConMetrics.InboundPacketCount += this.inCount;
@@ -412,6 +383,40 @@ namespace BNet.Client
         }
 
 
+        private void InternalClose()
+        {
+            this.LogTrace("CLOSE");
+
+            if (!this.forceShutdown)
+            {
+                this.LogTrace("SHUTDOWN COMMENCING");
+
+                if (!this.mainLoopDead)
+                {
+                    this.shutdownLock = new ManualResetEventSlim(false);
+
+                    // wait until the main thread is exited
+                    this.LogTrace("WAITING FOR THREADS TO EXIT");
+                    this.shutdownLock.Wait();
+                }
+
+                this.LogTrace("SHUTDOWN ACHIEVED - DISPOSING");
+            }
+
+            this.Dispose();
+
+            var args = new DisconnectedEventArgs();
+            if (this.asyncOperation != null)
+            {
+                this.asyncOperation.Post(this.RaiseDisconnected, args);
+            }
+            else
+            {
+                this.RaiseDisconnected(args);
+            }
+        }
+
+
         /// <summary>
         ///     Handles a message asynchronously that was received from
         ///     the RCon server.
@@ -497,15 +502,7 @@ namespace BNet.Client
             }
 
 
-            IInboundDatagram dgram = InboundDatagramBase.ParseReceivedBytes(result.Buffer);
-            if (dgram != null)
-            {
-                await this.DispatchReceivedDatagram(dgram);
-            }
-            else
-            {
-                this.DispatchPacketProblem(new PacketProblemEventArgs(PacketProblemType.Corrupted));
-            }
+            await this.DispatchReceivedDatagram(result.Buffer);
         }
 
 
@@ -522,27 +519,31 @@ namespace BNet.Client
         /// <summary>
         ///     Dispatches the received datagram to the appropriate target.
         /// </summary>
-        /// <param name="dgram">
-        ///     The received <see cref="IDatagram" />.
+        /// <param name="buffer">
+        ///     The received bytes.
         /// </param>
-        private async Task DispatchReceivedDatagram(IInboundDatagram dgram)
+        private async Task DispatchReceivedDatagram(byte[] buffer)
         {
-            this.parsedDatagramsCount++;
-            if (dgram != null)
+            if (!VerifyCrc(buffer))
             {
-                if (dgram.Type == DatagramType.Message)
-                {
-                    var conMsg = (ConsoleMessageDatagram)dgram;
-                    await this.AcknowledgeMessage(conMsg.SequenceNumber);
-                    this.DispatchConsoleMessage(conMsg);
-                    return;
-                }
-
-                // else, dgram is either login or command response
-                this.LogTrace("BEFORE response.Dispatch");
-                this.responseDispatcher.Dispatch(dgram);
-                this.LogTrace("AFTER  response.Dispatch");
+                this.DispatchPacketProblem(new PacketProblemEventArgs(PacketProblemType.Corrupted));
+                return;
             }
+
+            IInboundDatagram dgram = InboundDatagramBase.ParseReceivedBytes(buffer);
+            this.parsedDatagramsCount++;
+            if (dgram.Type == DatagramType.Message)
+            {
+                var conMsg = (ConsoleMessageDatagram)dgram;
+                await this.AcknowledgeMessage(conMsg.SequenceNumber);
+                this.DispatchConsoleMessage(conMsg);
+                return;
+            }
+
+            // else, dgram is either login or command response
+            this.LogTrace("BEFORE response.Dispatch");
+            this.responseDispatcher.Dispatch(dgram);
+            this.LogTrace("AFTER  response.Dispatch");
         }
 
 
@@ -631,6 +632,25 @@ namespace BNet.Client
             ExceptionDispatchInfo exInfo = ExceptionDispatchInfo.Capture(task.Exception);
             this.forceShutdown = true;
             exInfo.Throw();
+        }
+
+
+        private static bool VerifyCrc(byte[] buffer)
+        {
+            int payloadLength = Buffer.ByteLength(buffer) - 6;
+            var payload = new byte[payloadLength];
+            Buffer.BlockCopy(buffer, 6, payload, 0, payloadLength);
+            byte[] computedChecksum;
+            using (var crc = new Crc32(Crc32.DefaultPolynomialReversed, Crc32.DefaultSeed))
+            {
+                computedChecksum = crc.ComputeHash(payload);
+                Array.Reverse(computedChecksum);
+            }
+
+            var originalChecksum = new byte[4];
+            Buffer.BlockCopy(buffer, 2, originalChecksum, 0, 4);
+
+            return computedChecksum.SequenceEqual(originalChecksum);
         }
 
 

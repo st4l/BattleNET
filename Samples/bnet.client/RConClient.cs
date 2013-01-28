@@ -483,8 +483,8 @@ namespace BNet.Client
             this.subscribedMsgReceivedHandler = null;
             this.msgDispatcher.Disconnected -= this.MsgDispatcherOnDisconnected;
             this.msgDispatcher.UpdateMetrics(this.Metrics);
-            this.ShutdownReason = this.msgDispatcher.ShutdownReason;
             this.msgDispatcher.Close(); // disposes
+            this.ShutdownReason = this.msgDispatcher.ShutdownReason;
             this.msgDispatcher = null;
         }
 

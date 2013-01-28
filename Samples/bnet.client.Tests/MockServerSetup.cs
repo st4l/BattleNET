@@ -50,5 +50,7 @@ namespace bnet.client.Tests
         public bool DontAnswerKeepAlive { get; set; }
 
         public int MaxRunSeconds { get; set; }
+
+        public bool DisorderedMultiPacketResponses { get; set; }
     }
 }

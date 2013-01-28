@@ -17,10 +17,16 @@ namespace BNet.Client.Datagrams
 
         public const int ConsoleMessageBodyStartIndex = 9;
 
+        public const int CommandResponseSequenceNumberIndex = 8;
+        
         public const int CommandResponseMultipartFlag = 9;
 
-        public const int CommandResponseSequenceNumberIndex = 8;
+        public const int CommandResponseMultipartTotalPartsIndex = 10;
+        public const int CommandResponseMultipartPartNumberIndex = 11;
 
+        
         #endregion
+
+
     }
 }

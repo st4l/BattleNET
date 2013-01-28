@@ -41,13 +41,42 @@ namespace BNet.Client
             }
 
             // it's a command response.
-            var cmdDgram = (CommandResponseDatagram)dgram;
-            lock (this.cmdResponseHandlers)
+            if (dgram is CommandSinglePacketResponseDatagram)
             {
-                var handler = this.cmdResponseHandlers[cmdDgram.OriginalSequenceNumber];
-                this.cmdResponseHandlers.Remove(cmdDgram.OriginalSequenceNumber);
-                handler.Return(cmdDgram);
-                Debug.WriteLine("handler for command packet {0} invoked", cmdDgram.OriginalSequenceNumber);
+                var cmdDgram = (CommandSinglePacketResponseDatagram)dgram;
+                lock (this.cmdResponseHandlers)
+                {
+                    var handler = this.cmdResponseHandlers[cmdDgram.OriginalSequenceNumber];
+                    this.cmdResponseHandlers.Remove(cmdDgram.OriginalSequenceNumber);
+                    handler.Return(cmdDgram);
+                    Debug.WriteLine("handler for command packet {0} invoked", cmdDgram.OriginalSequenceNumber);
+                }
+            }
+            else if (dgram is CommandResponsePartDatagram)
+            {
+                var partDgram = (CommandResponsePartDatagram)dgram;
+                CommandMultiPacketResponseDatagram masterCmd = null;
+                var handler = this.cmdResponseHandlers[partDgram.OriginalSequenceNumber];
+                if (handler.ResponseDatagram == null)
+                {
+                    masterCmd = new CommandMultiPacketResponseDatagram(partDgram);
+                    handler.ResponseDatagram = masterCmd;
+                }
+                else
+                {
+                    masterCmd = (CommandMultiPacketResponseDatagram)handler.ResponseDatagram;
+                    masterCmd.AddPart(partDgram);
+                }
+                if (masterCmd.Complete)
+                {
+                    lock (this.cmdResponseHandlers)
+                    {
+                        this.cmdResponseHandlers.Remove(masterCmd.OriginalSequenceNumber);
+                        handler.Return(masterCmd);
+                        Debug.WriteLine("handler for multi-part command packet {0} invoked",
+                                        masterCmd.OriginalSequenceNumber);
+                    }
+                }
             }
         }
     }

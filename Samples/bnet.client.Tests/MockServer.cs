@@ -323,21 +323,79 @@ namespace bnet.client.Tests
 
             if (cmdText == "getplayers")
             {
-                const string response = @"Players on server:
+                this.SendGetPlayersSimple(seqNum);
+            }
+            if (cmdText == "getplayersmulti")
+            {
+                this.SendGetPlayersMulti(seqNum);
+            }
+
+        }
+
+
+        private void SendGetPlayersMulti(byte seqNum)
+        {
+            if (this.setup.DisorderedMultiPacketResponses)
+            {
+                for (int i = 9; i >= 0; i--)
+                {
+                    this.SendGetPlayersPart(seqNum, (byte)i, 10);
+                }
+            }
+            else
+            {
+                for (byte i = 0; i < 10; i++)
+                {
+                    this.SendGetPlayersPart(seqNum, i, 10);
+                }
+            }
+
+        }
+
+
+        private void SendGetPlayersPart(byte seqNum, byte partNum, byte total)
+        {
+            const string response = @"Players on server: (part {0:000}/{1:000})
 [#] [IP Address]:[Port] [Ping] [GUID] [Name]
 --------------------------------------------------
 0   103.77.52.177:2304    32   1ef92993d1e8f2512422da34c9f975f1(OK) Jhon Denton (Lobby)
 0   103.77.52.177:2304    32   -  Pixie
-(19 players in total)";
-                byte[] responseBytes = Encoding.ASCII.GetBytes(response);
-                
-                var outPayload = new byte[responseBytes.Length + 3];
-                Buffer.SetByte(outPayload, 0, 0xFF);
-                Buffer.SetByte(outPayload, 1, 0x01);
-                Buffer.SetByte(outPayload, 2, seqNum);
-                Buffer.BlockCopy(responseBytes, 0, outPayload, 3, responseBytes.Length);
-                this.outboundQueue.Enqueue(this.BuildOutboundPacket(outPayload));
-            }
+(19 players in total)
+";
+            string output = string.Format(response, partNum + 1, total);
+            byte[] responseBytes = Encoding.ASCII.GetBytes(output);
+
+            var outPayload = new byte[responseBytes.Length + 6];
+            Buffer.SetByte(outPayload, 0, 0xFF);
+            Buffer.SetByte(outPayload, 1, 0x01);
+            Buffer.SetByte(outPayload, 2, seqNum);
+
+            Buffer.SetByte(outPayload, 3, 0x00);
+            Buffer.SetByte(outPayload, 4, total);
+            Buffer.SetByte(outPayload, 5, partNum);
+
+            Buffer.BlockCopy(responseBytes, 0, outPayload, 6, responseBytes.Length);
+            this.outboundQueue.Enqueue(this.BuildOutboundPacket(outPayload));
+        }
+
+
+        private void SendGetPlayersSimple(byte seqNum)
+        {
+            const string response = @"Players on server:
+[#] [IP Address]:[Port] [Ping] [GUID] [Name]
+--------------------------------------------------
+0   103.77.52.177:2304    32   1ef92993d1e8f2512422da34c9f975f1(OK) Jhon Denton (Lobby)
+0   103.77.52.177:2304    32   -  Pixie
+(19 players in total)
+";
+            byte[] responseBytes = Encoding.ASCII.GetBytes(response);
+
+            var outPayload = new byte[responseBytes.Length + 3];
+            Buffer.SetByte(outPayload, 0, 0xFF);
+            Buffer.SetByte(outPayload, 1, 0x01);
+            Buffer.SetByte(outPayload, 2, seqNum);
+            Buffer.BlockCopy(responseBytes, 0, outPayload, 3, responseBytes.Length);
+            this.outboundQueue.Enqueue(this.BuildOutboundPacket(outPayload));
         }
 
 

@@ -50,10 +50,13 @@
     <Reference Include="Microsoft.CSharp" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Datagrams\CommandResponsePartDatagram.cs" />
     <Compile Include="Datagrams\CommandDatagram.cs" />
     <Compile Include="Datagrams\AcknowledgeMessageDatagram.cs" />
-    <Compile Include="Datagrams\CRC32.cs" />
+    <Compile Include="Datagrams\CommandMultiPacketResponseDatagram.cs" />
     <Compile Include="Datagrams\CommandResponseDatagram.cs" />
+    <Compile Include="Datagrams\CRC32.cs" />
+    <Compile Include="Datagrams\CommandSinglePacketResponseDatagram.cs" />
     <Compile Include="Datagrams\ConsoleMessageDatagram.cs" />
     <Compile Include="Datagrams\Constants.cs" />
     <Compile Include="Datagrams\DatagramBase.cs" />

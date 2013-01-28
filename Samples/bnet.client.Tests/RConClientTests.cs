@@ -249,14 +249,47 @@ namespace bnet.client.Tests
             var handler = await rcc.SendCommandAsync("getplayers");
             Assert.IsNotNull(handler);
 
-            CommandResponseDatagram response = null;
+            CommandSinglePacketResponseDatagram singlePacketResponse = null;
             if (await handler.WaitForResponse())
             {
-                response = handler.ResponseDatagram as CommandResponseDatagram;
+                singlePacketResponse = handler.ResponseDatagram as CommandSinglePacketResponseDatagram;
             }
 
-            Assert.IsNotNull(response);
-            Assert.IsTrue(response.Body.StartsWith("Players on server:"));
+            Assert.IsNotNull(singlePacketResponse);
+            Assert.IsTrue(singlePacketResponse.Body.StartsWith("Players on server:"));
+            rcc.Close();
+        }
+
+
+        [TestMethod]
+        [TestCategory("Protocol Compliance")]
+        public async Task ShouldParseMultipartCommandResponsesCorrectly()
+        {
+            var conf = new MockServerSetup
+            {
+                LoginAtOnce = true
+            };
+            var client = CreateClient(conf);
+            var rcc = new RConClient(client, client.ServerSetup.Password);
+            var connected = rcc.ConnectAsync().Result;
+            Assert.IsTrue(connected, "not connected");
+
+            var handler = await rcc.SendCommandAsync("getplayersmulti");
+            Assert.IsNotNull(handler);
+
+            CommandMultiPacketResponseDatagram multiPacketResponseDatagram = null;
+            if (await handler.WaitForResponse())
+            {
+                multiPacketResponseDatagram = handler.ResponseDatagram as CommandMultiPacketResponseDatagram;
+            }
+
+            Assert.IsNotNull(multiPacketResponseDatagram);
+            Assert.IsTrue(multiPacketResponseDatagram.Body.StartsWith("Players on server:"));
+            for (int i = 1; i <= 10; i++)
+            {
+                Assert.IsTrue(multiPacketResponseDatagram.Body.Contains(
+                    string.Format("(part {0:000}/010)", i)));
+            }
             rcc.Close();
         }
 
@@ -287,9 +320,39 @@ namespace bnet.client.Tests
 
         [TestMethod]
         [TestCategory("Protocol Compliance")]
-        public void ShouldAcceptOutOfOrderCommandResponsesCorrectly()
+        public async Task ShouldAcceptOutOfOrderCommandResponsesCorrectly()
         {
-            Assert.Fail();
+            var conf = new MockServerSetup
+            {
+                LoginAtOnce = true,
+                DisorderedMultiPacketResponses = true
+            };
+            var client = CreateClient(conf);
+            var rcc = new RConClient(client, client.ServerSetup.Password);
+            var connected = rcc.ConnectAsync().Result;
+            Assert.IsTrue(connected, "not connected");
+
+            var handler = await rcc.SendCommandAsync("getplayersmulti");
+            Assert.IsNotNull(handler);
+
+            CommandMultiPacketResponseDatagram multiPacketResponseDatagram = null;
+            if (await handler.WaitForResponse())
+            {
+                multiPacketResponseDatagram = handler.ResponseDatagram as CommandMultiPacketResponseDatagram;
+            }
+            rcc.Close();
+
+            Assert.IsNotNull(multiPacketResponseDatagram);
+            Assert.IsTrue(multiPacketResponseDatagram.Body.StartsWith("Players on server:"));
+            for (int i = 1; i <= 10; i++)
+            {
+                Assert.IsTrue(multiPacketResponseDatagram.Body.Contains(
+                    string.Format("(part {0:000}/010)", i)));
+            }
+
+            Debug.WriteLine("Response assembled: {0}", (object)multiPacketResponseDatagram.Body);
+            Debug.WriteLine("Client shutdown reason: {0}", rcc.ShutdownReason);
+
         }
 
 

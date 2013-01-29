@@ -1,6 +1,9 @@
 ﻿// ----------------------------------------------------------------------------------------------------
 // <copyright file="MainWindow.xaml.cs" company="Me">Copyright (c) 2012 St4l.</copyright>
 // ----------------------------------------------------------------------------------------------------
+
+using BNet.Client.Datagrams;
+
 namespace bnet.WinClient
 {
     using System;
@@ -18,18 +21,34 @@ namespace bnet.WinClient
         public MainWindow()
         {
             this.InitializeComponent();
+            this.UpdateUiStatus();
         }
+
+        string host = "68.233.230.165";
+        int port = 2302;
+        private RConClient rcc;
+        private bool connected = false;
 
 
         private async void ConnectClick(object sender, RoutedEventArgs e)
         {
-            var host = "68.233.230.165";
-            var port = 2302;
-            var rcc = new RConClient(host, port, "70e02f66");
-            rcc.MessageReceived += this.OnRccOnMessageReceived;
-            rcc.Disconnected += RccOnDisconnected;
+            this.btnConnect.IsEnabled = false;
+            if (this.connected)
+            {
+                this.rcc.MessageReceived -= this.OnRccOnMessageReceived;
+                this.rcc.Disconnected -= this.RccOnDisconnected;
+                this.rcc.Close();
+                this.rcc = null;
+                this.connected = false;
+                this.UpdateUiStatus();
+                this.btnConnect.IsEnabled = true;
+                return;
+            }
 
-            bool connected = false;
+            this.rcc = new RConClient(host, port, "70e02f66");
+            this.rcc.MessageReceived += this.OnRccOnMessageReceived;
+            this.rcc.Disconnected += this.RccOnDisconnected;
+
             try
             {
                 var msg = string.Format("Connecting to {0} on port {1}...", host, port);
@@ -49,10 +68,34 @@ namespace bnet.WinClient
             }
             finally
             {
-                if (!connected)
+                if (!this.connected)
                 {
-                    rcc.MessageReceived -= this.OnRccOnMessageReceived;
+                    this.rcc.MessageReceived -= this.OnRccOnMessageReceived;
+                    this.rcc.Disconnected -= this.RccOnDisconnected;
                 }
+            }
+            this.btnConnect.IsEnabled = true;
+            this.UpdateUiStatus();
+        }
+
+
+        private void UpdateUiStatus()
+        {
+            if (this.connected)
+            {
+                this.btnConnect.Content = "Disconnect";
+                this.txtCommand.IsEnabled = true;
+                this.btnSendCommand.IsEnabled = true;
+                this.txtCommand.Visibility = Visibility.Visible;
+                this.btnSendCommand.Visibility = Visibility.Visible;
+            }
+            else
+            {
+                this.btnConnect.Content = "Connect";
+                this.txtCommand.IsEnabled = false;
+                this.btnSendCommand.IsEnabled = false;
+                this.txtCommand.Visibility = Visibility.Hidden;
+                this.btnSendCommand.Visibility = Visibility.Hidden;
             }
         }
 
@@ -60,6 +103,8 @@ namespace bnet.WinClient
         private void RccOnDisconnected(object sender, DisconnectedEventArgs disconnectedEventArgs)
         {
             this.WriteLine("Disconnected!");
+            this.connected = false;
+            this.UpdateUiStatus();
         }
 
 
@@ -76,10 +121,25 @@ namespace bnet.WinClient
         }
 
 
-        private void asdf()
+        
+        private async void btnSendCommand_Click(object sender, RoutedEventArgs e)
         {
-            var c = new TcpClient();
-            c.ConnectAsync("localhost", 23);
+            if (string.IsNullOrWhiteSpace(this.txtCommand.Text))
+            {
+                return;
+            }
+            this.WriteLine("> " + this.txtCommand.Text);
+
+            var handler = await this.rcc.SendCommandAsync(txtCommand.Text);
+            await handler.WaitForResponse();
+            if (handler.ResponseDatagram != null)
+            {
+                var response = handler.ResponseDatagram as CommandResponseDatagram;
+                if (response != null)
+                {
+                    this.WriteLine(response.Body);
+                }
+            }
         }
 
     }

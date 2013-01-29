@@ -48,6 +48,8 @@ namespace BNet.Client
         private IUdpClient udpClient;
         private int keepAlivePacketsSent;
 
+        private int lastCommandSequenceNumber = -1;
+
 
         /// <summary>
         ///     Initializes a new instance of <see cref="MessageDispatcher" />
@@ -241,6 +243,10 @@ namespace BNet.Client
                     .ConfigureAwait(continueOnCapturedContext: false);
             dgram.SentTime = DateTime.Now;
             this.outCount++;
+            if (dgram.Type == DatagramType.Command)
+            {
+                this.lastCommandSequenceNumber++;
+            }
 
             this.LogTrace("AFTER  await SendDatagramAsync");
 
@@ -269,6 +275,17 @@ namespace BNet.Client
             rConMetrics.DispatchedConsoleMessages += this.dispatchedConsoleMessages;
             rConMetrics.KeepAlivePacketsSent += this.keepAlivePacketsSent;
             rConMetrics.KeepAlivePacketsAcknowledgedByServer += this.keepAlivePacketsAcks;
+        }
+
+
+        internal byte GetNextCommandSequenceNumber()
+        {
+            var next = this.lastCommandSequenceNumber + 1;
+            if (next > 255)
+            {
+                next = 0;
+            }
+            return (byte)next;
         }
 
 

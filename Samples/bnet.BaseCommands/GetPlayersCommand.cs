@@ -6,7 +6,7 @@ namespace BNet.BaseCommands
     using System;
     using System.Collections.Generic;
     using System.Globalization;
-    using BNet.IoC;
+    using IoC;
 
 
     public class GetPlayersCommand : RConCommandBase<List<PlayerInfo>>

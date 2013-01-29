@@ -9,11 +9,10 @@ namespace BNet.Client.Datagrams
 
     public class CommandDatagram : OutboundDatagramBase
     {
-        private static byte nextSequenceNumber;
 
-
-        public CommandDatagram(string commandText)
+        public CommandDatagram(byte sequenceNumber, string commandText)
         {
+            this.SequenceNumber = sequenceNumber;
             this.CommandText = commandText;
         }
 
@@ -39,7 +38,6 @@ namespace BNet.Client.Datagrams
             var len = Buffer.ByteLength(cmdBytes);
             var result = new byte[len + 3];
 
-            this.SequenceNumber = nextSequenceNumber++;
             Buffer.SetByte(result, 0, 0xFF);
             Buffer.SetByte(result, 1, 0x01);
             Buffer.SetByte(result, 2, this.SequenceNumber);

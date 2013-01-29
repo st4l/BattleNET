@@ -73,7 +73,9 @@ namespace BNet.Client
             private void SendKeepAlivePacket()
             {
                 Debug.WriteLine("keep alive packet {0} sent", this.sentCount + 1);
-                var keepAliveDgram = new CommandDatagram(string.Empty);
+                var keepAliveDgram = new CommandDatagram(
+                    this.msgDispatcher.GetNextCommandSequenceNumber(), 
+                    string.Empty);
                 this.sentHandlers.Add(this.msgDispatcher.SendDatagramAsync(keepAliveDgram).Result);
                 this.lastSendTime = DateTime.Now;
                 this.sentCount++;

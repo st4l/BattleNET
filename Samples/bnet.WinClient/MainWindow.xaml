@@ -3,10 +3,12 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="MainWindow" Height="350" Width="525">
     <Grid>
-        <Button Content="Connect" HorizontalAlignment="Right" Margin="0,10,10,0" VerticalAlignment="Top" Width="75" Click="ConnectClick"/>
+        <Button x:Name="btnConnect" Content="Connect" HorizontalAlignment="Right" Margin="0,10,10,0" VerticalAlignment="Top" Width="75" Click="ConnectClick"/>
         <RichTextBox x:Name="TxtLog" Margin="10,37,10,10" FontFamily="Consolas" VerticalScrollBarVisibility="Auto">
             <FlowDocument/>
         </RichTextBox>
+        <TextBox x:Name="txtCommand" HorizontalAlignment="Left" Height="23" Margin="10,10,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Width="264"/>
+        <Button x:Name="btnSendCommand" Content="Send" HorizontalAlignment="Left" Margin="279,10,0,0" VerticalAlignment="Top" Width="75" Click="btnSendCommand_Click"/>
 
     </Grid>
 </Window>

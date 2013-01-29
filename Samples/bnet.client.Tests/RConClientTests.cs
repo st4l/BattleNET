@@ -292,31 +292,7 @@ namespace bnet.client.Tests
             }
             rcc.Close();
         }
-
-
-        [TestMethod]
-        [TestCategory("Correctness")]
-        public void ShoulNotifyPacketLoss()
-        {
-            throw new NotImplementedException();
-        }
-
-
-        [TestMethod]
-        [TestCategory("Protocol Compliance")]
-        public void ShouldDiscardRepeatedCommandResponses()
-        {
-            Assert.Fail();
-        }
-
-
-        [TestMethod]
-        [TestCategory("Protocol Compliance")]
-        public void ShouldDiscardRepeatedCommandResponseParts()
-        {
-            Assert.Fail();
-        }
-
+        
 
         [TestMethod]
         [TestCategory("Protocol Compliance")]
@@ -451,6 +427,33 @@ namespace bnet.client.Tests
             Assert.IsTrue(serverMetrics.KeepAlivePacketsReceived > 0);
             Assert.IsTrue(rcc.Metrics.KeepAlivePacketsAcknowledgedByServer == 0);
             Assert.IsTrue(rcc.ShutdownReason == ShutdownReason.NoResponseFromServer);
+        }
+
+
+
+        [TestMethod]
+        [TestCategory("Correctness")]
+        public void ShoulNotifyPacketLoss()
+        {
+            throw new NotImplementedException();
+        }
+
+
+        [TestMethod]
+        [TestCategory("Protocol Compliance")]
+        public void ShouldDiscardRepeatedCommandResponses()
+        {
+            // TODO: should be working, but I need to write this test
+            Assert.Fail();
+        }
+
+
+        [TestMethod]
+        [TestCategory("Protocol Compliance")]
+        public void ShouldDiscardRepeatedCommandResponseParts()
+        {
+            // TODO: should be working, but I need to write this test
+            Assert.Fail();
         }
 
 

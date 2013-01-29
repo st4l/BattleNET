@@ -5,6 +5,7 @@
 using System;
 using System.Diagnostics;
 using System.Globalization;
+using System.Net.Sockets;
 using System.Runtime.ExceptionServices;
 using System.Security.Authentication;
 using System.Threading;
@@ -71,6 +72,8 @@ namespace BNet.Client
         
         private ILog Log { get; set; }
 
+
+
 #if DEBUG
         // will block until this client shuts down
         private readonly ManualResetEvent runningLock = new ManualResetEvent(false);
@@ -83,15 +86,18 @@ namespace BNet.Client
             this.port = port;
 
             this.password = password;
+            
             NetUdpClient client = null;
             try
             {
-                client = new NetUdpClient(this.host, this.port)
+                client = new NetUdpClient
                              {
+                                 ExclusiveAddressUse = true,
                                  DontFragment = true,
                                  EnableBroadcast = false,
                                  MulticastLoopback = false
                              };
+                client.Connect(host, port);
             }
             catch (Exception ex)
             {
@@ -297,7 +303,7 @@ namespace BNet.Client
 
         public async Task<ResponseHandler> SendCommandAsync(string commandText)
         {
-            var dgram = new CommandDatagram(commandText);
+            var dgram = new CommandDatagram(this.msgDispatcher.GetNextCommandSequenceNumber(), commandText);
             return await this.msgDispatcher.SendDatagramAsync(dgram);
         }
 

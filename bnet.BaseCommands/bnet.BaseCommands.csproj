@@ -71,16 +71,6 @@
   <ItemGroup>
     <None Include="packages.config" />
   </ItemGroup>
-  <ItemGroup>
-    <ProjectReference Include="..\..\BattleNET\BattleNET.csproj">
-      <Project>{4fbb3734-215b-45b1-bdbc-0efa156a6900}</Project>
-      <Name>BattleNET</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\bnet.IoC\bnet.IoC.csproj">
-      <Project>{3c948b25-a0e8-4231-9a48-37c371d5bf5c}</Project>
-      <Name>bnet.IoC</Name>
-    </ProjectReference>
-  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <Import Project="$(SolutionDir)\.nuget\nuget.targets" />
   <PropertyGroup>

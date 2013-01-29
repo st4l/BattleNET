@@ -106,12 +106,6 @@
     <Compile Include="ServerInfo.cs" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\BattleNET\BattleNET.csproj">
-      <Project>{4fbb3734-215b-45b1-bdbc-0efa156a6900}</Project>
-      <Name>BattleNET</Name>
-    </ProjectReference>
-  </ItemGroup>
-  <ItemGroup>
     <EntityDeploy Include="Data\BNetDb.edmx">
       <Generator>EntityModelCodeGenerator</Generator>
       <LastGenOutput>BNetDb.Designer.cs</LastGenOutput>

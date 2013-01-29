@@ -1,6 +1,5 @@
 [Oo]bj
-BattleNET/[Bb]in/
-BattleNET Client/[Bb]in/
+[Bb]in
 *.vshost.exe*
 *.pdb
 *.user
@@ -9,11 +8,13 @@ BattleNET Client/[Bb]in/
 *.bak
 *.ncb
 *.log 
+*.psess
+*.vsp
 *.DS_Store
 [Tt]humbs.db 
 _ReSharper.*
 *.resharper
 Ankh.NoLoad
 release.bat
-Samples/TestResults/
-*.psess
+TestResults/
+bnet.doxygen/generated*/

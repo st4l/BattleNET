@@ -75,16 +75,6 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\bnet.BaseCommands\bnet.BaseCommands.csproj">
-      <Project>{282647EF-454F-4D46-A68F-1EF88F8A82B1}</Project>
-      <Name>bnet.BaseCommands</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\bnet.IoC\bnet.IoC.csproj">
-      <Project>{3C948B25-A0E8-4231-9A48-37C371D5BF5C}</Project>
-      <Name>bnet.IoC</Name>
-    </ProjectReference>
-  </ItemGroup>
-  <ItemGroup>
     <None Include="packages.config" />
   </ItemGroup>
   <Choose>
